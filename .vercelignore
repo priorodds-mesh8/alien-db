@@ -1,0 +1,17 @@
+# Ignore large data and env for Vercel static deploy
+.venv/
+data/
+runs/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.log
+.env
+.env.local
+.git/
+.DS_Store
+*.npy
+*.jsonl
+node_modules/

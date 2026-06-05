@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "framework": null,
+  "buildCommand": "echo 'No build step - static HTML/JS UI'",
+  "outputDirectory": ".",
+  "routes": [
+    {
+      "src": "/",
+      "dest": "/artifacts/alien-database-v01-introduction.html"
+    },
+    {
+      "src": "/motif-explorer",
+      "dest": "/artifacts/motif-explorer/index.html"
+    },
+    {
+      "src": "/motif-explorer/(.*)",
+      "dest": "/artifacts/motif-explorer/$1"
+    },
+    {
+      "src": "/(.*\\.html)",
+      "dest": "/artifacts/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/artifacts/$1"
+    }
+  ]
+}
