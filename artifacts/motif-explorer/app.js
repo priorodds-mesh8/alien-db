@@ -475,7 +475,7 @@
    * Footer ticker
    * ---------------------------------------------------------------------- */
   function fillTicker() {
-    const txt = "  ★  21,179 CHUNKS INDEXED  ★  5 COMMON MOTIFS  ★  30 RARE CLUSTERS  ★  e5-large-v2 EMBEDDINGS  ★  COSINE SIMILARITY  ★  ALL PROVENANCE TRACEABLE  ★  PRESS START  ";
+    const txt = "  ★  21,179 CHUNKS INDEXED  ★  5 COMMON MOTIFS (real dynamic)  ★  0 SMALL CLUSTERS (k=100 run)  ★  e5-large-v2 EMBEDDINGS  ★  COSINE SIMILARITY  ★  ALL PROVENANCE TRACEABLE  ★  PRESS START  ";
     document.getElementById("tickerA").textContent = txt;
     document.getElementById("tickerB").textContent = txt;
   }
