@@ -70,3 +70,12 @@ print(resp.message.content)
 - Custom (current ui/app + seed): exact e5-large-v2 embeddings you chose, rich hybrid metadata filters at query time, full JSONL traces, fabrication-only eval, reproducible evidence pool, specific system prompt + local fallback.
 
 Both can coexist on the same underlying data. The script above is a convenience for the managed path.
+
+## Live Instance
+- GitHub: https://github.com/priorodds-mesh8/alien-db (monorepo)
+- Vercel: https://alien-n36cd4dx3-joellang356-6818s-projects.vercel.app (or https://alien-db-chi.vercel.app alias)
+  - Root: the exhaustive intro + links to Motif Explorer
+  - /motif-explorer : the full rebuilt arcade UI from Claude Design assets (pixel invaders, ROLL, etc.)
+- Note: May require login initially. In Vercel dashboard for the project, go to Settings > General and disable "Login to View" / authentication to make fully public.
+
+Deploys are connected to git pushes.
