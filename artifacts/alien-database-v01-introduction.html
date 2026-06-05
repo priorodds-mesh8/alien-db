@@ -650,11 +650,11 @@ flowchart LR
                        class="inline-block text-2xl px-10 py-3 bg-black border-4 border-[#39ff14] text-[#39ff14] hover:bg-[#003300] active:scale-95 transition-all no-underline font-arcade tracking-widest">
                         ▶ LAUNCH POLISHED MOTIF EXPLORER
                     </a>
-                    <div class="text-[10px] mt-2 text-[#00aa22]">Self-contained single-folder experience • open index.html in the motif-explorer subdir • 5 real counts + beautiful illustrative rare clusters for the demo</div>
+                    <div class="text-[10px] mt-2 text-[#00aa22]">Self-contained single-folder experience • open index.html in the motif-explorer subdir • real dynamic 5 from latest compute (20k+ high-sim for craft motifs) + illustrative rare for ROLL demo</div>
                 </div>
 
                 <div class="mt-6 text-xs border border-[#00aa22] p-3 bg-[#001100]">
-                    Uses the design's stunning rendering engine + our real prevalence numbers from data/motifs.json for the 5 commons (1247 / 892 / 1644 / 1483 / 723). The ROLL draws from a rich set of 30 "weird" semantic neighborhoods that perfectly illustrate the concept. Real quotes from the live compute will be wired in a future pass.
+                    Uses the design's stunning rendering engine + real prevalence from latest compute_motif_clusters.py (20775 / 20745 / 16088 for the 3 benchmarks + top 2 enrich tags). ROLL uses illustrative "weird" examples (this k=100 run produced 0 size-2-12 clusters). The motif-explorer/ now reflects the actual dynamic 5.
                 </div>
             </div>
             
@@ -710,11 +710,9 @@ flowchart LR
         // ... existing scripts ...
         
         // Motif Explorer rebuilt with Claude Design assets.
-        // The polished interactive experience is now at ./motif-explorer/index.html (multi-file for fidelity: index.html + motif-data.js + app.js).
-        // Old inline data/JS removed to avoid conflicts. The 5 real counts and math remain in the section above.
-        const motifData = { // (kept as no-op stub so any remnant calls don't crash)
-            common_motifs: [], small_clusters_pool: []
-        };
+        // The polished interactive experience (with real dynamic common 5 from compute) is at ./motif-explorer/index.html
+        // (loads its own motif-data.js which was updated post-compute).
+        const motifData = { common_motifs: [], small_clusters_pool: [] }; // stub only
             "common_motifs": [
                 {
                     "name": "Silent Triangle Hover",
