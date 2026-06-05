@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Motif Explorer v0.1 — Alien Database</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --green: #39ff14;
+    --green-dim: #1f8a0f;
+    --pink: #ff3ea5;
+    --cyan: #22e0ff;
+    --yellow: #ffe23d;
+    --rust: #d9622b;
+    --bg: #000000;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { background: var(--bg); }
+
+  body {
+    font-family: "VT323", "Courier New", monospace;
+    color: var(--green);
+    margin: 0;
+    min-height: 100vh;
+    letter-spacing: 0.5px;
+    overflow-x: hidden;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Pixel display font */
+  .font-arcade { font-family: "Press Start 2P", "VT323", monospace; letter-spacing: 0; }
+  .font-vt { font-family: "VT323", monospace; }
+
+  /* ---- CRT scanlines + vignette over the whole page ---- */
+  .crt-overlay {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        rgba(0,0,0,0) 0px,
+        rgba(0,0,0,0) 2px,
+        rgba(0,0,0,0.28) 3px,
+        rgba(0,0,0,0.28) 4px
+      );
+    mix-blend-mode: multiply;
+  }
+  .crt-overlay::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%);
+  }
+  /* faint flicker */
+  @keyframes flicker { 0%,100%{opacity:.96;} 50%{opacity:1;} 92%{opacity:.93;} }
+  .crt-flicker { animation: flicker 5s infinite steps(60); }
+
+  /* starfield behind everything */
+  .starfield { position: fixed; inset: 0; z-index: -1; background: #000; }
+
+  /* ---- glow helpers ---- */
+  .glow-green { text-shadow: 0 0 4px var(--green), 0 0 12px rgba(57,255,20,.7), 0 0 24px rgba(57,255,20,.35); }
+  .glow-pink  { text-shadow: 0 0 4px var(--pink),  0 0 12px rgba(255,62,165,.7), 0 0 24px rgba(255,62,165,.35); }
+  .glow-cyan  { text-shadow: 0 0 4px var(--cyan),  0 0 12px rgba(34,224,255,.7); }
+  .glow-yellow{ text-shadow: 0 0 4px var(--yellow),0 0 12px rgba(255,226,61,.7); }
+
+  /* ---- pixel bezel border ---- */
+  .bezel {
+    border: 4px solid var(--green);
+    box-shadow:
+      0 0 0 2px #000,
+      0 0 0 5px var(--green-dim),
+      0 0 18px rgba(57,255,20,.35),
+      inset 0 0 22px rgba(57,255,20,.12);
+    background: linear-gradient(180deg, rgba(8,16,8,.92), rgba(0,0,0,.92));
+  }
+  .bezel-pink {
+    border-color: var(--pink);
+    box-shadow:
+      0 0 0 2px #000,
+      0 0 0 5px #8a1f5a,
+      0 0 18px rgba(255,62,165,.35),
+      inset 0 0 22px rgba(255,62,165,.12);
+  }
+
+  /* ---- pixel-art invader grid ---- */
+  .invader {
+    display: grid;
+    width: max-content;
+    image-rendering: pixelated;
+  }
+  .invader > i { display: block; }
+
+  /* float / blink animations for invaders */
+  @keyframes bob { 0%,100%{ transform: translateY(0);} 50%{ transform: translateY(-7px);} }
+  @keyframes march { 0%,49%{ transform: translateX(0);} 50%,100%{ transform: translateX(6px);} }
+  .anim-bob { animation: bob 2.4s ease-in-out infinite; }
+  .anim-march { animation: march .6s steps(1) infinite; }
+
+  /* motif tile button */
+  .motif-tile {
+    cursor: pointer;
+    transition: transform .12s ease, filter .12s ease;
+    position: relative;
+  }
+  .motif-tile:hover, .motif-tile:focus-visible {
+    transform: translateY(-6px) scale(1.04);
+    outline: none;
+  }
+  .motif-tile:hover .invader { filter: drop-shadow(0 0 8px currentColor); }
+  .motif-tile:active { transform: translateY(-1px) scale(0.99); }
+
+  /* the "shot" fired on click */
+  @keyframes fire { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-160px); opacity: 0; } }
+  .shot {
+    position: absolute; left: 50%; top: 0; width: 4px; height: 16px;
+    background: var(--green); margin-left: -2px;
+    box-shadow: 0 0 8px var(--green);
+    animation: fire .45s linear forwards;
+    pointer-events: none;
+  }
+
+  /* big arcade button */
+  .arcade-btn {
+    font-family: "Press Start 2P", monospace;
+    background: var(--green);
+    color: #000;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 7px 0 #146b08, 0 9px 14px rgba(0,0,0,.6), 0 0 22px rgba(57,255,20,.4);
+    transition: transform .08s ease, box-shadow .08s ease;
+    text-shadow: none;
+  }
+  .arcade-btn:hover { background: #5cff44; }
+  .arcade-btn:active { transform: translateY(6px); box-shadow: 0 1px 0 #146b08, 0 2px 6px rgba(0,0,0,.6); }
+  .arcade-btn .lab { color: var(--pink); text-shadow: 0 0 6px rgba(255,62,165,.6); }
+
+  .ghost-btn {
+    font-family: "Press Start 2P", monospace;
+    background: transparent; color: var(--green);
+    border: 3px solid var(--green); cursor: pointer;
+    transition: background .12s, color .12s;
+  }
+  .ghost-btn:hover { background: var(--green); color:#000; }
+
+  /* blinking caret / 1UP */
+  @keyframes blink { 0%,49%{opacity:1;} 50%,100%{opacity:0;} }
+  .blink { animation: blink 1s steps(1) infinite; }
+
+  /* horizontal marquee scroll for footer ticker */
+  @keyframes ticker { from { transform: translateX(0);} to { transform: translateX(-50%);} }
+  .ticker-track { display: inline-flex; white-space: nowrap; animation: ticker 26s linear infinite; }
+
+  /* GAME OVER overlay */
+  .overlay-back {
+    position: fixed; inset: 0; z-index: 5000;
+    background: rgba(0,0,0,0.88);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 40px 16px;
+    overflow-y: auto;
+    opacity: 0; pointer-events: none;
+    transition: opacity .18s ease;
+  }
+  .overlay-back.show { opacity: 1; pointer-events: auto; }
+  @keyframes popin { from { transform: translateY(24px) scale(.96); opacity: 0;} to { transform: none; opacity: 1;} }
+  .overlay-card { animation: popin .22s ease; }
+
+  /* quote screen card */
+  .quote-card {
+    border: 2px solid var(--green-dim);
+    background: rgba(4,12,4,0.9);
+    box-shadow: inset 0 0 14px rgba(57,255,20,.1);
+  }
+
+  /* similarity dots */
+  .simdot { width: 9px; height: 9px; background: var(--green-dim); display: inline-block; }
+  .simdot.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  /* scanlines inside cards */
+  .inner-scan {
+    background-image: repeating-linear-gradient(to bottom, rgba(57,255,20,.05) 0 1px, transparent 1px 3px);
+  }
+
+  /* scanning state invaders */
+  .scan-row { display:flex; gap: 18px; justify-content:center; }
+
+  /* custom scrollbar */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background:#040804; }
+  ::-webkit-scrollbar-thumb { background: var(--green-dim); border: 1px solid var(--green); }
+
+  /* selection */
+  ::selection { background: var(--pink); color:#000; }
+
+  /* sound toggle pill */
+  .pill { border: 2px solid var(--green); }
+  .pill.off { color: var(--green-dim); border-color: var(--green-dim); }
+
+  a.linkish { color: var(--cyan); text-decoration: none; border-bottom: 1px dotted var(--cyan); }
+</style>
+</head>
+<body class="crt-flicker">
+  <canvas class="starfield" id="starfield"></canvas>
+  <div class="crt-overlay"></div>
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 pb-24">
+
+    <!-- ============ TOP BAR ============ -->
+    <div class="flex items-center justify-between pt-5 text-[13px] sm:text-base">
+      <div class="font-arcade text-[10px] sm:text-xs glow-green">ALIEN&nbsp;DB&nbsp;v0.1</div>
+      <div class="flex items-center gap-4 sm:gap-8">
+        <span class="text-[var(--yellow)] glow-yellow whitespace-nowrap">1&nbsp;CREDIT</span>
+        <span class="whitespace-nowrap"><span class="text-[var(--pink)] glow-pink">HI-SCORE</span>&nbsp;021179</span>
+        <button id="soundToggle" class="pill off px-2 py-1 text-xs sm:text-sm font-arcade" style="font-size:9px" aria-pressed="false">
+          SND&nbsp;OFF
+        </button>
+      </div>
+    </div>
+
+    <!-- ============ HERO ============ -->
+    <header class="text-center mt-8 sm:mt-12">
+      <div class="text-[var(--green)] glow-green text-base sm:text-xl tracking-[0.3em] mb-3">— INSERT COIN — PRESS&nbsp;START —</div>
+      <h1 class="font-arcade glow-green leading-[1.25] text-[26px] sm:text-[52px] md:text-[64px]">MOTIF<br/>EXPLORER</h1>
+      <div class="font-arcade text-[10px] sm:text-sm text-[var(--pink)] glow-pink mt-4">v0.1</div>
+
+      <!-- marching invaders row -->
+      <div id="heroInvaders" class="scan-row mt-7 mb-2"></div>
+
+      <p class="text-lg sm:text-2xl mt-5 text-[var(--green)]">
+        21,179&nbsp;CHUNKS&nbsp;<span class="text-[var(--green-dim)]">•</span>&nbsp;1024-D&nbsp;SEMANTIC&nbsp;SPACE
+      </p>
+      <p class="text-sm sm:text-base text-[var(--green-dim)] mt-1">
+        A vector database of human UFO narratives. Not keyword lookup — meaning lookup.
+      </p>
+    </header>
+
+    <!-- ============ LEVEL 1: THE 5 COMMON MOTIFS ============ -->
+    <section class="mt-14">
+      <div class="flex items-end justify-between mb-5 flex-wrap gap-2">
+        <h2 class="font-arcade text-sm sm:text-lg glow-green">LEVEL&nbsp;1 — TOP&nbsp;5&nbsp;MOTIFS</h2>
+        <span class="text-[var(--green-dim)] text-base sm:text-lg">most common meaning-clusters in the corpus</span>
+      </div>
+
+      <div id="motifRow" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4"></div>
+      <p class="text-center text-[var(--green-dim)] text-base sm:text-lg mt-4 blink">▸ CLICK AN INVADER TO READ ITS REPORTS ◂</p>
+    </section>
+
+    <!-- ============ LEVEL 2: ROLL FOR WEIRD ============ -->
+    <section class="mt-16">
+      <div class="bezel bezel-pink p-6 sm:p-9 text-center">
+        <h2 class="font-arcade text-sm sm:text-lg text-[var(--pink)] glow-pink mb-2">LEVEL&nbsp;2 — ROLL&nbsp;FOR&nbsp;WEIRD</h2>
+        <p class="text-lg sm:text-xl text-[var(--green)] max-w-2xl mx-auto mb-6">
+          ~30 tiny rare clusters (2–12 chunks each) live in the dark corners of meaning space.
+          Pull the lever and meet one.
+        </p>
+        <button id="rollBtn" class="arcade-btn px-7 py-5 text-[12px] sm:text-[15px]">
+          ▶&nbsp; <span class="lab">ROLL&nbsp;FOR&nbsp;WEIRD</span> &nbsp;◀
+        </button>
+        <div class="text-[var(--green-dim)] text-base mt-4">randomly draws 1 uncommon motif from the rare pool</div>
+      </div>
+    </section>
+
+    <!-- ============ HOW TO READ THIS ============ -->
+    <section class="mt-16 grid md:grid-cols-2 gap-6">
+      <div class="bezel p-6">
+        <h3 class="font-arcade text-xs sm:text-sm glow-green mb-4">HOW&nbsp;TO&nbsp;READ&nbsp;THIS</h3>
+        <ul class="space-y-3 text-lg sm:text-xl leading-snug">
+          <li><span class="text-[var(--pink)]">▣ RELATIONAL DB</span> = exact column matches. <span class="text-[var(--green-dim)]">shape = "triangle" AND abduction = true.</span></li>
+          <li><span class="text-[var(--cyan)]">▣ HERE</span> = meaning match in 1024-D space. "Pale short figure with big eyes" fires the same <span class="text-[var(--cyan)]">small gray</span> direction without the exact words.</li>
+          <li><span class="text-[var(--yellow)]">▣ PROVENANCE</span> = we show the actual quotes that caused the match + the original report ID.</li>
+          <li><span class="text-[var(--green)]">▣ DISCOVERY</span> = clusters and "weird" rolls reveal patterns you can't see row-by-row.</li>
+        </ul>
+      </div>
+
+      <!-- toy 2D semantic space plot -->
+      <div class="bezel p-6">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-arcade text-xs sm:text-sm glow-green">SEMANTIC&nbsp;SPACE&nbsp;(2-D&nbsp;TOY&nbsp;VIEW)</h3>
+          <span class="text-[var(--green-dim)] text-sm">1024-D → 2-D</span>
+        </div>
+        <canvas id="plot" width="520" height="300" class="w-full" style="image-rendering:pixelated;"></canvas>
+        <div id="plotLegend" class="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-base"></div>
+        <p class="text-[var(--green-dim)] text-sm mt-2">Each dot = one report chunk. Tight blobs = motifs. Faint scattered dots = the rare clusters you can roll for.</p>
+      </div>
+    </section>
+
+    <!-- ============ FOOTER ============ -->
+    <footer class="mt-16 bezel overflow-hidden">
+      <div class="py-2 border-b-2 border-[var(--green-dim)] overflow-hidden">
+        <div class="ticker-track text-base text-[var(--green-dim)]">
+          <span id="tickerA"></span><span id="tickerB"></span>
+        </div>
+      </div>
+      <div class="p-6 text-base sm:text-lg leading-relaxed">
+        <p class="text-[var(--green)]">DATA SOURCE — full NUFORC narrative corpus (deduped).</p>
+        <p class="text-[var(--green-dim)]">Embeddings: <span class="text-[var(--cyan)]">e5-large-v2</span> · Search: cosine on normalized vectors in <span class="text-[var(--cyan)]">Pinecone</span> · All provenance traceable to <span class="text-[var(--cyan)]">source_report_id</span>.</p>
+        <p class="text-[var(--rust)] mt-3 text-sm">⚠ DEMO BUILD — quotes &amp; report IDs on this page are SYNTHETIC / ILLUSTRATIVE, written in NUFORC style to show the interface. Not real corpus rows.</p>
+      </div>
+    </footer>
+
+    <p class="text-center text-[var(--green-dim)] text-sm mt-8 font-arcade" style="font-size:9px">© 1978–2026 ALIEN DB ARCADE DIV. &nbsp; GAME&nbsp;OVER? &nbsp; INSERT&nbsp;COIN.</p>
+  </main>
+
+  <!-- ============ GAME OVER / DETAIL OVERLAY ============ -->
+  <div class="overlay-back" id="overlay">
+    <div class="bezel overlay-card w-full max-w-3xl p-6 sm:p-8 my-4" id="overlayCard"></div>
+  </div>
+
+  <script src="motif-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

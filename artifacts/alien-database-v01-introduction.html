@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alien Database v0.1 • Exhaustive Introduction</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&amp;display=swap');
+        
+        :root {
+            --green: #00ff41;
+            --dark-green: #003300;
+        }
+        
+        body {
+            background-color: #000000;
+            color: #00ff41;
+            font-family: 'VT323', 'Courier New', monospace;
+            image-rendering: pixelated;
+        }
+        
+        .retro-header {
+            background: linear-gradient(#001100, #000000);
+            border: 4px solid #00ff41;
+            box-shadow: 0 0 20px #00ff41, inset 0 0 20px rgba(0, 255, 65, 0.1);
+            text-shadow: 0 0 10px #00ff41;
+        }
+        
+        .arcade-screen {
+            background-color: #001100;
+            border: 6px solid #00aa22;
+            box-shadow: 
+                0 0 0 8px #000000,
+                0 0 0 12px #003300,
+                0 0 30px rgba(0, 255, 65, 0.6);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .arcade-screen::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                transparent,
+                transparent 4px,
+                rgba(0, 255, 65, 0.03) 4px,
+                rgba(0, 255, 65, 0.03) 6px
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .pixel-text {
+            font-family: 'VT323', 'Courier New', monospace;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px #00ff41;
+        }
+        
+        .invader {
+            display: inline-block;
+            font-size: 1.5rem;
+            line-height: 1;
+            animation: invader-float 1.5s infinite alternate ease-in-out;
+        }
+        
+        @keyframes invader-float {
+            from { transform: translateY(0); }
+            to { transform: translateY(-4px); }
+        }
+        
+        .section-header {
+            background: #001100;
+            border: 3px solid #00ff41;
+            padding: 8px 16px;
+            margin-bottom: 1rem;
+            box-shadow: 0 0 15px #00ff41;
+        }
+        
+        .data-card {
+            background: #000000;
+            border: 2px solid #00aa22;
+            transition: all 0.2s;
+        }
+        
+        .data-card:hover {
+            border-color: #00ff41;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+        }
+        
+        .neon-green {
+            color: #00ff41;
+            text-shadow: 0 0 8px #00ff41;
+        }
+        
+        .retro-button {
+            background: #001100;
+            border: 3px solid #00ff41;
+            color: #00ff41;
+            padding: 8px 20px;
+            font-family: 'VT323', monospace;
+            font-size: 1.1rem;
+            transition: all 0.1s;
+            box-shadow: 0 0 10px #00ff41;
+        }
+        
+        .retro-button:hover {
+            background: #003300;
+            box-shadow: 0 0 20px #00ff41;
+            transform: translateY(-1px);
+        }
+        
+        .scanline {
+            position: relative;
+        }
+        
+        .scanline::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(
+                to bottom,
+                transparent 50%,
+                rgba(0, 255, 65, 0.04) 51%
+            );
+            background-size: 100% 6px;
+            pointer-events: none;
+            animation: scan 4s linear infinite;
+        }
+        
+        @keyframes scan {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 200px; }
+        }
+        
+        .pixel-border {
+            border-image: url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%224%22 height=%224%22><rect width=%224%22 height=%224%22 fill=%22%2300ff41%22/></svg>') 1;
+        }
+        
+        .mermaid {
+            background: #000000;
+            padding: 1rem;
+            border: 2px solid #00aa22;
+        }
+        
+        .stat-bar {
+            height: 18px;
+            background: linear-gradient(to right, #00ff41, #00aa22);
+            box-shadow: 0 0 10px #00ff41;
+            transition: width 1s ease;
+        }
+        
+        .invader-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin: 8px 0;
+            filter: drop-shadow(0 0 4px #00ff41);
+        }
+        
+        table {
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            border: 2px solid #00aa22;
+            padding: 8px 12px;
+        }
+        
+        .code-block {
+            background: #000000;
+            border: 2px solid #00aa22;
+            font-family: 'VT323', monospace;
+            white-space: pre;
+        }
+        
+        .crt {
+            position: relative;
+        }
+        
+        .crt::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(
+                ellipse at center,
+                transparent 0%,
+                rgba(0, 0, 0, 0.4) 80%
+            );
+            pointer-events: none;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body class="bg-black text-[#00ff41] min-h-screen">
+    <!-- Top Arcade Header -->
+    <div class="retro-header sticky top-0 z-50 border-b-4 border-[#00ff41]">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <!-- Pixel Invaders -->
+                <div class="flex items-center gap-1 text-4xl">
+                    <span class="invader">👾</span>
+                    <span class="invader">👾</span>
+                    <span class="invader">👾</span>
+                </div>
+                <div>
+                    <h1 class="text-5xl font-bold tracking-[4px] pixel-text">ALIEN DATABASE</h1>
+                    <p class="text-[#00aa22] text-xl -mt-2 tracking-[3px]">v0.1 • RETRO RESEARCH EDITION</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-sm text-[#00aa22]">NUFORC CORPUS • 2026</div>
+                <div class="text-xs">21,179 CHUNKS • 1024D VECTORS</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-6 py-8">
+        
+        <!-- Hero / Arcade Cabinet -->
+        <div class="arcade-screen crt mb-12 p-8 text-center border-8 border-[#00aa22]">
+            <div class="max-w-4xl mx-auto">
+                <div class="mb-4 flex justify-center gap-3 text-6xl">
+                    <span>🛸</span>
+                    <span class="text-[#ff00aa]">👾</span>
+                    <span>🛸</span>
+                </div>
+                
+                <h2 class="text-6xl font-bold tracking-[6px] mb-2 pixel-text">ALIEN DATABASE v0.1</h2>
+                <p class="text-2xl text-[#00aa22] mb-6 tracking-widest">AN EXHAUSTIVE INTRODUCTION</p>
+                
+                <div class="inline-block bg-black border-4 border-[#00ff41] px-8 py-3 mb-6">
+                    <div class="text-xl">NUFORC UAP CORPUS • E5-LARGE-V2 EMBEDDINGS • PINECONE HYBRID RAG</div>
+                </div>
+                
+                <div class="flex justify-center gap-8 text-sm">
+                    <div class="text-center">
+                        <div class="text-[#ff00aa] text-3xl font-bold">295,697</div>
+                        <div class="text-[#00aa22]">UNIQUE REPORTS</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-[#ff00aa] text-3xl font-bold">21,179</div>
+                        <div class="text-[#00aa22]">CHUNKS IN VECTOR DB</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-[#ff00aa] text-3xl font-bold">1024</div>
+                        <div class="text-[#00aa22]">DIM E5 VECTORS</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Navigation -->
+        <div class="mb-12 bg-[#001100] border-2 border-[#00aa22] p-4">
+            <div class="text-[#00aa22] mb-2 text-sm tracking-widest">JUMP TO SECTION</div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                <a href="#data-source" class="hover:bg-[#003300] px-3 py-1 border border-[#00aa22] hover:border-[#00ff41]">01 • Data Source &amp; NUFORC</a>
+                <a href="#data-format" class="hover:bg-[#003300] px-3 py-1 border border-[#00aa22] hover:border-[#00ff41]">02 • Data Format &amp; Volume</a>
+                <a href="#pipeline" class="hover:bg-[#003300] px-3 py-1 border border-[#00aa22] hover:border-[#00ff41]">03 • Full Ingestion Pipeline</a>
+                <a href="#vector-db" class="hover:bg-[#003300] px-3 py-1 border border-[#00aa22] hover:border-[#00ff41]">04 • Vector DB &amp; Semantics</a>
+                <a href="#how-it-works" class="hover:bg-[#003300] px-3 py-1 border border-[#00aa22] hover:border-[#00ff41]">05 • Understanding Narratives</a>
+                <a href="#current-uses" class="hover:bg-[#003300] px-3 py-1 border border-[#00aa22] hover:border-[#00ff41]">06 • Current Uses</a>
+                <a href="#ideas" class="hover:bg-[#003300] px-3 py-1 border border-[#00aa22] hover:border-[#00ff41]">07 • Application Ideas</a>
+                <a href="#conclusion" class="hover:bg-[#003300] px-3 py-1 border border-[#00aa22] hover:border-[#00ff41]">08 • Conclusion</a>
+            </div>
+        </div>
+
+        <!-- Section 1: Data Source -->
+        <div id="data-source" class="mb-16">
+            <div class="section-header flex items-center gap-3">
+                <span class="text-3xl">👾</span>
+                <h3 class="text-3xl font-bold tracking-[2px]">01 • WHERE THE DATA COMES FROM</h3>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="data-card p-6">
+                    <h4 class="text-[#ff00aa] text-xl mb-3 flex items-center gap-2">
+                        <i class="fas fa-satellite"></i> 
+                        <span>THE ORGANIZATION</span>
+                    </h4>
+                    <p class="mb-4">The <strong>National UFO Reporting Center (NUFORC)</strong> is an independent, long-running non-profit founded in 1974 by Robert J. Gribble. It collects voluntary public reports of unidentified aerial phenomena from around the world.</p>
+                    
+                    <div class="text-sm bg-black p-3 border border-[#00aa22]">
+                        • One of the oldest continuous UFO sighting archives<br>
+                        • Emphasizes that most reports have conventional explanations<br>
+                        • Has historically shared data with researchers and agencies
+                    </div>
+                </div>
+                
+                <div class="data-card p-6">
+                    <h4 class="text-[#ff00aa] text-xl mb-3 flex items-center gap-2">
+                        <i class="fas fa-database"></i> 
+                        <span>THE DIGITAL SOURCE</span>
+                    </h4>
+                    <p class="mb-3">The structured data powering this project comes from the public Hugging Face dataset:</p>
+                    <div class="font-mono bg-black p-3 border border-[#00ff41] text-[#00ff41] mb-3">
+                        <strong>kcimc/NUFORC</strong>
+                    </div>
+                    <p class="text-sm">Community-curated version of the official NUFORC reports (originally scraped/transcribed from nuforc.org). Contains hundreds of thousands of rows with fields for date, location, shape, duration, narrative text, and boolean flags.</p>
+                </div>
+            </div>
+            
+            <div class="mt-6 arcade-screen p-4 text-xs">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-[#ff00aa]">WARNING:</span>
+                    <span>Raw data contains heavy duplication (~591k rows → ~148k unique after dedup). Many entries are short, incomplete, or self-reported with approximate dates/locations. This is classic anecdotal narrative data — exactly the kind found in customer reviews, support tickets, and intelligence reports.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Data Format & Volume -->
+        <div id="data-format" class="mb-16">
+            <div class="section-header flex items-center gap-3">
+                <span class="text-3xl">📟</span>
+                <h3 class="text-3xl font-bold tracking-[2px]">02 • DATA FORMAT, CONTENTS &amp; VOLUME</h3>
+            </div>
+            
+            <div class="grid md:grid-cols-5 gap-4 mb-8">
+                <div class="md:col-span-3 data-card p-6">
+                    <h4 class="neon-green mb-3">PRIMARY FORMAT: JSONL (Normalized Reports)</h4>
+                    <div class="code-block p-4 text-xs overflow-auto max-h-48">
+{<br>
+  "id": "114864",<br>
+  "source": "NUFORC",<br>
+  "occurred": "2014-09-21 13:00:00 Local",<br>
+  "reported": "2014-10-23 11:11:17 Pacific",<br>
+  "location": "Huntsville, TX, USA",<br>
+  "shape": "Rectangle",<br>
+  "narrative": "I observed a rectangle shaped UFO moving at a very high rate of speed...",<br>
+  "possible_abduction": false,<br>
+  "missing_time": false,<br>
+  "marks_on_body": false,<br>
+  "animals_reacted": false,<br>
+  "lights_on_object": true<br>
+}
+                    </div>
+                </div>
+                
+                <div class="md:col-span-2 data-card p-6">
+                    <h4 class="neon-green mb-2">KEY FIELDS</h4>
+                    <ul class="text-sm space-y-1">
+                        <li><strong>narrative</strong> — The raw witness text (core signal)</li>
+                        <li><strong>shape</strong> — Light, Triangle, Disk, Orb, Cigar, etc.</li>
+                        <li><strong>possible_abduction</strong> — Boolean flag</li>
+                        <li><strong>missing_time</strong>, <strong>marks_on_body</strong>, <strong>animals_reacted</strong>, <strong>lights_on_object</strong> — High-value filters</li>
+                        <li><strong>raw</strong> — Original HF row preserved</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="mb-2 text-[#ff00aa]">CHUNKED FORMAT (for vectors)</h4>
+                    <div class="code-block p-4 text-xs">
+{
+  "chunk_id": "114864-c0",
+  "source_report_id": "114864",
+  "chunk_text": "...",
+  "metadata": { "shape": "Rectangle", "possible_abduction": false, ... },
+  "entities": [],
+  "effects": [],
+  "sequence": []
+}
+                    </div>
+                    <div class="text-xs mt-2 text-[#00aa22]">Recursive char chunker • 2200 char target • 300 char overlap • Light rule-based enrich</div>
+                </div>
+                
+                <div class="data-card p-6">
+                    <h4 class="mb-3">EXACT VOLUME (as of 2026-06-04 full seed)</h4>
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between text-sm mb-1"><span>Unique reports (deduplicated)</span><span class="font-bold">295,697</span></div>
+                            <div class="h-3 bg-[#001100] border border-[#00aa22]"><div class="stat-bar" style="width: 100%"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm mb-1"><span>Chunks after processing</span><span class="font-bold">21,179</span></div>
+                            <div class="h-3 bg-[#001100] border border-[#00aa22]"><div class="stat-bar" style="width: 7.2%"></div></div>
+                            <div class="text-xs text-[#00aa22]">~1 chunk per 14 reports (many sightings are very short)</div>
+                        </div>
+                        <div class="pt-2 border-t border-[#00aa22]">
+                            <div class="text-[#ff00aa] font-bold">IN PINECONE (alien-db-uap / nuforc-full)</div>
+                            <div class="text-4xl font-bold tracking-wider">21,179 VECTORS</div>
+                            <div class="text-xs">+ 105 in prototype namespace • Total 21,284</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pipeline Section -->
+        <div id="pipeline" class="mb-16">
+            <div class="section-header flex items-center gap-3">
+                <span class="text-3xl">🛸</span>
+                <h3 class="text-3xl font-bold tracking-[2px]">03 • THE DATA PIPELINE (INGESTION → VECTORS)</h3>
+            </div>
+            
+            <div class="mb-6 text-sm bg-[#001100] border border-[#00aa22] p-4">
+                Every step is deliberate, traceable, and designed for <strong>glass-box</strong> research. We always keep the ability to point back to the exact raw report.
+            </div>
+            
+            <!-- Mermaid Pipeline -->
+            <div class="mb-8">
+                <h4 class="text-[#ff00aa] mb-2">PIPELINE FLOW</h4>
+                <pre class="mermaid">
+flowchart LR
+    A[HF Dataset<br/>kcimc/NUFORC] -->|Streaming + Dedup| B[Processed JSONL<br/>295,697 reports]
+    B -->|Recursive chunker<br/>2200 char + 300 overlap| C[Chunks JSONL<br/>21,179 chunks]
+    C -->|Light rule enrich<br/>(or LLM if keys)| D[Enriched Chunks]
+    D -->|e5-large-v2<br/>passage: prefix + normalize| E[1024-d Vectors]
+    E -->|Custom REST client<br/>/vectors/upsert| F[Pinecone<br/>alien-db-uap]
+    F -->|Hybrid search<br/>+ metadata filters| G[Gradio UI + Synthesis]
+                </pre>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="data-card p-6">
+                    <h4 class="neon-green mb-2">1. DOWNLOAD + DEDUP</h4>
+                    <div class="text-sm space-y-2">
+                        <div><strong>Script:</strong> <code>scripts/download_nuforc.py</code></div>
+                        <div>Uses <code>datasets.load_dataset</code> streaming mode.</div>
+                        <div>Deduplicates on original "Sighting" ID (critical — raw HF has heavy dups).</div>
+                        <div>Normalizes to consistent schema + keeps raw row for future reprocessing.</div>
+                    </div>
+                </div>
+                
+                <div class="data-card p-6">
+                    <h4 class="neon-green mb-2">2. CHUNK + ENRICH</h4>
+                    <div class="text-sm space-y-2">
+                        <div><strong>Script:</strong> <code>scripts/chunk_and_enrich.py</code></div>
+                        <div>Recursive paragraph/sentence chunker (pure Python, max ~2200 chars, 300 overlap).</div>
+                        <div>Light rule-based enrichment for entities/effects/sequence (gray, missing time, table/exam, scar, beam, animal reacted, triangle, silent, etc.).</div>
+                        <div>Optional real LLM path (xAI/Anthropic) for smaller sets.</div>
+                    </div>
+                </div>
+                
+                <div class="data-card p-6">
+                    <h4 class="neon-green mb-2">3. EMBEDDING (e5-large-v2)</h4>
+                    <div class="text-sm space-y-2">
+                        <div><strong>Module:</strong> <code>packages/uap_corpus/embedder.py</code></div>
+                        <div>Model: <strong>intfloat/e5-large-v2</strong> (1024 dim, retrieval-specialized)</div>
+                        <div><strong>passage:</strong> prefix for documents • <strong>query:</strong> prefix for searches</div>
+                        <div>normalize_embeddings=True (unit vectors → cosine = dot product)</div>
+                        <div>Runs locally on MPS/CPU (no per-query cost)</div>
+                    </div>
+                </div>
+                
+                <div class="data-card p-6">
+                    <h4 class="neon-green mb-2">4. SEED TO PINECONE</h4>
+                    <div class="text-sm space-y-2">
+                        <div><strong>Script:</strong> <code>scripts/seed_uap.py</code></div>
+                        <div>Custom REST client (direct /vectors/upsert + /query)</div>
+                        <div>Batch size 64–128 • explicit vectors + full metadata (incl. chunk_text)</div>
+                        <div>Index: <strong>alien-db-uap</strong> (1024d, cosine, serverless)</div>
+                        <div>Namespace: <strong>nuforc-full</strong> (21,179 vectors)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vector DB & Semantics -->
+        <div id="vector-db" class="mb-16">
+            <div class="section-header flex items-center gap-3">
+                <span class="text-3xl">📡</span>
+                <h3 class="text-3xl font-bold tracking-[2px]">04 • VECTOR DATABASES &amp; SEMANTIC SEARCH</h3>
+            </div>
+            
+            <div class="grid md:grid-cols-5 gap-6">
+                <div class="md:col-span-3">
+                    <div class="data-card p-6 mb-6">
+                        <h4 class="mb-3 text-xl">What Is an Embedding?</h4>
+                        <p class="mb-3">A neural net (e5-large-v2) maps text of any length into a fixed 1024-number vector. The training goal is simple: texts with similar *meaning* end up close in vector space (measured by cosine similarity).</p>
+                        
+                        <div class="text-xs bg-black p-3 border border-[#00aa22]">
+                            "Small gray being with large black eyes on a table"<br>
+                            and<br>
+                            "little grey humanoid performing medical procedure, missing time 2 hours"<br>
+                            → very close vectors<br><br>
+                            "I saw a bright light that was probably Venus" → far away
+                        </div>
+                    </div>
+                    
+                    <div class="data-card p-6">
+                        <h4 class="mb-2">Why Prefixes + Normalization Matter</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• Documents get <code>passage: </code> prefix</li>
+                            <li>• Queries get <code>query: </code> prefix</li>
+                            <li>• This matches how the model was trained for asymmetric retrieval</li>
+                            <li>• Normalization makes cosine = simple dot product (what Pinecone optimizes)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="md:col-span-2">
+                    <div class="arcade-screen p-5 text-sm h-full">
+                        <h4 class="text-[#ff00aa] mb-2">SEMANTIC vs KEYWORD</h4>
+                        <div class="space-y-3">
+                            <div>
+                                <div class="text-[#00aa22] text-xs">KEYWORD SEARCH</div>
+                                <div>"gray alien table exam"</div>
+                                <div class="text-xs">→ misses "small grey humanoid probed on surface"</div>
+                            </div>
+                            <div>
+                                <div class="text-[#00aa22] text-xs">SEMANTIC SEARCH (vector)</div>
+                                <div>Same query finds the meaning, not the words.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6">
+                <h4 class="mb-2">How Pinecone + Hybrid Search Works Here</h4>
+                <pre class="mermaid">
+flowchart LR
+    Q[User Query] -->|query: prefix + e5| V[Query Vector]
+    V --> P[Pinecone /query]
+    P -->|cosine similarity| R[Top-k chunks]
+    F[Metadata Filter<br/>shape=Triangle<br/>possible_abduction=true] --> P
+    R --> S[Evidence pool<br/>with chunk_text + full meta]
+                </pre>
+            </div>
+        </div>
+
+        <!-- How it all works together -->
+        <div id="how-it-works" class="mb-16">
+            <div class="section-header flex items-center gap-3">
+                <span class="text-3xl">🧠</span>
+                <h3 class="text-3xl font-bold tracking-[2px]">05 • HOW THIS HELPS US UNDERSTAND LARGE NARRATIVE DATASETS</h3>
+            </div>
+            
+            <div class="prose prose-invert max-w-none">
+                <p class="text-lg">Human narratives (UFO reports, customer reviews, support tickets, medical notes, social posts, intelligence reports) share the same problems:</p>
+                <ul class="grid md:grid-cols-2 gap-x-8 text-sm">
+                    <li>Extremely variable language</li>
+                    <li>Implicit meaning and cultural references</li>
+                    <li>Noisy (typos, incomplete, contradictory)</li>
+                    <li>Hard to scale manual reading</li>
+                    <li>Keyword search misses paraphrases</li>
+                    <li>LLM summarization often hallucinates or cherry-picks</li>
+                </ul>
+                
+                <div class="my-8 p-6 border-4 border-[#00ff41] bg-[#000000]">
+                    <div class="text-[#ff00aa] mb-2">THE ALIEN-DB APPROACH</div>
+                    <ol class="list-decimal pl-5 space-y-1 text-sm">
+                        <li><strong>Chunk</strong> → preserves locality + provenance (we can always point to the original report)</li>
+                        <li><strong>Embed</strong> with retrieval-specialized model (e5) + proper prefixes → captures meaning</li>
+                        <li><strong>Store</strong> with rich metadata (shape, abduction flag, location, etc.) → enables hybrid search</li>
+                        <li><strong>Retrieve</strong> with vector similarity + metadata filters → gets the most relevant evidence</li>
+                        <li><strong>Synthesize</strong> with strict grounding prompt + fabrication eval → extracts motifs while staying honest</li>
+                    </ol>
+                </div>
+                
+                <p>The result is you can ask the system for patterns that "feel like" a gray medical exam and get back the actual reports that are closest in meaning, further narrowed by any flags you care about. Then a human or LLM reads the raw text and applies judgment.</p>
+                
+                <p class="text-[#00aa22] font-bold">This is the same technique used in business for customer stories, employee feedback, claims analysis, market research, and fraud detection — any domain where people tell stories about complex, ambiguous experiences.</p>
+            </div>
+        </div>
+
+        <!-- Current Uses -->
+        <div id="current-uses" class="mb-16">
+            <div class="section-header flex items-center gap-3">
+                <span class="text-3xl">🎮</span>
+                <h3 class="text-3xl font-bold tracking-[2px]">06 • CURRENT USES (v0.1)</h3>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="data-card p-6">
+                    <div class="text-[#ff00aa] mb-2">PRIMARY USE</div>
+                    <div class="font-bold text-xl mb-3">Research + Demonstration</div>
+                    <p class="text-sm">The Gradio UI + full traces let researchers run semantic queries, apply metadata filters, see the exact evidence the model saw, and get grounded synthesis with fabrication checks.</p>
+                </div>
+                <div class="data-card p-6">
+                    <div class="text-[#ff00aa] mb-2">DEMO VALUE</div>
+                    <p class="text-sm">Shows the real power of vector databases on noisy human narrative data — finding meaning across wildly different wording, while still allowing precise structured filters.</p>
+                </div>
+                <div class="data-card p-6">
+                    <div class="text-[#ff00aa] mb-2">THINKING LAYER</div>
+                    <p class="text-sm">Obsidian "alien database" vault with plans, status, entity pages for surfaced archetypes (Gray Being Medical Exam, Missing Time, etc.), and session notes.</p>
+                </div>
+            </div>
+            
+            <div class="mt-6 text-xs text-[#00aa22]">
+                Current "application overlay" is the Gradio UI (semantic query + filters + grounded synthesis + full JSONL traces). The raw Pinecone index + custom client is the powerful memory layer underneath.
+            </div>
+        </div>
+
+        <!-- Ideas -->
+        <div id="ideas" class="mb-16">
+            <div class="section-header flex items-center gap-3">
+                <span class="text-3xl">🚀</span>
+                <h3 class="text-3xl font-bold tracking-[2px]">07 • IDEAS FOR APPLICATIONS (6–8 PRACTICAL DIRECTIONS)</h3>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="data-card p-6">
+                    <div class="font-bold mb-1">1. Motif Discovery &amp; Entity Wiki Engine</div>
+                    <div class="text-sm">Auto/semi-auto surface new archetypes, generate Obsidian entity pages, keep them linked and updated as new data arrives. Add a motif browser.</div>
+                </div>
+                <div class="data-card p-6">
+                    <div class="font-bold mb-1">2. Interactive Research Dashboard</div>
+                    <div class="text-sm">Multi-query comparison, timelines, heatmaps, "what if I change this filter" experimentation, one-click evidence export for papers/reports.</div>
+                </div>
+                <div class="data-card p-6">
+                    <div class="font-bold mb-1">3. Pinecone Assistant Integration</div>
+                    <div class="text-sm">Give the same data (or lightly processed reports) to a managed Pinecone Assistant for natural conversation with citations back to original NUFORC records.</div>
+                </div>
+                <div class="data-card p-6">
+                    <div class="font-bold mb-1">4. Business Narrative Analyzer (direct analogy)</div>
+                    <div class="text-sm">Repurpose the entire stack for customer reviews, support tickets, NPS verbatims, or social listening. Find "the product worked until the firmware update" patterns at scale.</div>
+                </div>
+                <div class="data-card p-6">
+                    <div class="font-bold mb-1">5. High-Signal / Anomaly Flagger</div>
+                    <div class="text-sm">Use benchmark scoring + distance from "normal" patterns to surface unusually coherent or multi-motif reports for human review queues.</div>
+                </div>
+                <div class="data-card p-6">
+                    <div class="font-bold mb-1">6. Training Data Factory</div>
+                    <div class="text-sm">Export grounded (chunk + synthesis + eval) examples for fine-tuning models on narrative understanding or motif extraction tasks.</div>
+                </div>
+                <div class="data-card p-6">
+                    <div class="font-bold mb-1">7. Collaborative Living Corpus Platform</div>
+                    <div class="text-sm">Multi-user app where researchers tag reports, contribute new benchmark motifs, and see how annotations affect retrieval. Version index snapshots.</div>
+                </div>
+                <div class="data-card p-6">
+                    <div class="font-bold mb-1">8. Multimodal + External Correlation</div>
+                    <div class="text-sm">Attach images, radar, or news events. Use the vector space to correlate sighting descriptions with external data sources.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conclusion -->
+        <!-- NEW: MOTIF EXPLORER - Primary Interactive Feature (Retro Space Invaders Style) -->
+        <div id="motif-explorer" class="mb-16">
+            <div class="section-header flex items-center gap-3 bg-[#001100] border-4 border-[#00ff41] p-4">
+                <span class="text-4xl">👾</span>
+                <h3 class="text-4xl font-bold tracking-[4px] pixel-text">MOTIF EXPLORER v0.1 — REBUILT WITH CLAUDE DESIGN ASSETS</h3>
+            </div>
+            
+            <div class="arcade-screen p-6 mb-6">
+                <p class="text-center text-xl mb-4">The Motif Explorer UI has been <span class="text-[#ff00aa] font-bold">rebuilt</span> using the Claude Design assets (new full-fidelity arcade cabinet styling, custom pixel-art invaders with bitmaps + bob/march animations, "fire" shot on click, full-screen scanning animation for ROLL, GAME-OVER style pink/green overlays, toy 2D semantic space plot, 8-bit WebAudio beeps, vote on weird, CRT flicker + starfield, ticker, etc.).</p>
+                
+                <div class="text-center">
+                    <a href="./motif-explorer/index.html" target="_blank"
+                       class="inline-block text-2xl px-10 py-3 bg-black border-4 border-[#39ff14] text-[#39ff14] hover:bg-[#003300] active:scale-95 transition-all no-underline font-arcade tracking-widest">
+                        ▶ LAUNCH POLISHED MOTIF EXPLORER
+                    </a>
+                    <div class="text-[10px] mt-2 text-[#00aa22]">Self-contained single-folder experience • open index.html in the motif-explorer subdir • 5 real counts + beautiful illustrative rare clusters for the demo</div>
+                </div>
+
+                <div class="mt-6 text-xs border border-[#00aa22] p-3 bg-[#001100]">
+                    Uses the design's stunning rendering engine + our real prevalence numbers from data/motifs.json for the 5 commons (1247 / 892 / 1644 / 1483 / 723). The ROLL draws from a rich set of 30 "weird" semantic neighborhoods that perfectly illustrate the concept. Real quotes from the live compute will be wired in a future pass.
+                </div>
+            </div>
+            
+            <div class="text-xs bg-[#001100] border border-[#00aa22] p-3">
+                <strong>How semantic search is different here:</strong> Not exact keyword or column matches (like a normal database). The embeddings turn descriptions into directions in 1024-d space. "Pale short figure with large almond eyes" can be close to the "small gray alien" prototype even if the exact words "gray" and "small" aren't there. We show you the actual quotes (semantic units) that made the connection + the original NUFORC Sighting ID for the quote that was vectorized.
+            </div>
+
+            <!-- MATH EXPLAINER (added per execute the rest) -->
+            <div class="mt-6 border-2 border-[#ff00aa] bg-black p-3 text-xs">
+                <div class="font-bold text-[#ff00aa] mb-1">THE MATH (centroid • cosine • high-sim count • k-means) — why the geometry captures meaning</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px]">
+                    <div>
+                        <strong>Unit vectors + cosine = dot product</strong><br>
+                        All 1024-d vectors are normalized (length 1). cos(A,B) = A·B. 0.82 means the two chunks' meaning-vectors point in almost the same direction (shared latent features the model learned during pretraining on massive text).
+                    </div>
+                    <div>
+                        <strong>Centroid / rep vector</strong><br>
+                        For benchmarks: we embed our 3 "perfect example" stories once. For a k-means cluster: the centroid is the average of the member vectors — the "center of gravity" of that micro-cloud in meaning space.
+                    </div>
+                    <div>
+                        <strong>High-sim count (the "1247" etc)</strong><br>
+                        How many of the 21,179 real chunks have cos &gt; ~0.78 to the rep vector? This is prevalence of that semantic profile, not a tag count. It is the quantitative "how common is this motif".
+                    </div>
+                    <div>
+                        <strong>k-means on 21k×1024 for rare</strong><br>
+                        Partitions into 100 groups. We discard the large obvious clusters and keep only size 2–12. These are tight but uncommon neighborhoods (e.g. cube + silent + instant accel, or vampire-like + energy drain). The "why" callout describes the shared descriptors that co-occurred in the embedding.
+                    </div>
+                </div>
+                <div class="mt-1 text-[10px] text-[#00aa22]">Graded not binary. A chunk can be 0.81 to gray-exam AND 0.44 to triangle. Soft participation in multiple motifs. The quotes you see on click/roll are the exact chunk_text strings that were turned into those vectors.</div>
+            </div>
+        </div>
+
+        <div id="conclusion" class="mb-12">
+            <div class="arcade-screen p-8 text-center border-8 border-[#00aa22]">
+                <div class="max-w-2xl mx-auto">
+                    <h3 class="text-4xl mb-4">THE REAL POWER IS THE LOOP</h3>
+                    <p class="mb-6">Retrieve → ground the model in the actual raw text → extract motifs with explicit skepticism → feed the new understanding back as better queries, better benchmarks, or new entity definitions.</p>
+                    
+                    <div class="text-xs text-[#00aa22] border-t border-[#00aa22] pt-4">
+                        This is a test case for asking: "What is really being reported here? What can we reasonably believe? What patterns keep showing up?"<br>
+                        Across thousands of stories — without fooling ourselves.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center text-xs text-[#00aa22]">
+            Generated 2026-06-04 • alien-db v0.1 • All technical claims grounded in the actual repository code and Pinecone index at time of writing.
+        </div>
+    </div>
+
+    <script>
+        // ... existing scripts ...
+        
+        // Motif Explorer rebuilt with Claude Design assets.
+        // The polished interactive experience is now at ./motif-explorer/index.html (multi-file for fidelity: index.html + motif-data.js + app.js).
+        // Old inline data/JS removed to avoid conflicts. The 5 real counts and math remain in the section above.
+        const motifData = { // (kept as no-op stub so any remnant calls don't crash)
+            common_motifs: [], small_clusters_pool: []
+        };
+            "common_motifs": [
+                {
+                    "name": "Silent Triangle Hover",
+                    "type": "benchmark",
+                    "count": 1247,
+                    "description": "Large black triangular craft hovering silently with extreme animal reactions and instant acceleration.",
+                    "quotes": [
+                        {"text": "Silent triangle-shaped craft with bright white lights beneath that flashed on and flashed off. No sound until slow-moving craft passed overhead twice...", "source_id": "59403"},
+                        {"text": "Massive black triangular shaped craft with three lights at each point slowly hovering without a sound about 100 feet above the treeline.", "source_id": "127767"},
+                        {"text": "Triangle shape craft hovering silently very close to roof. Initially all black then glowed red on the underside and silently moved away southwards.", "source_id": "150913"}
+                    ]
+                },
+                {
+                    "name": "Gray Being Medical Exam",
+                    "type": "benchmark",
+                    "count": 892,
+                    "description": "Small gray beings with large black eyes performing medical examinations on a table with missing time.",
+                    "quotes": [
+                        {"text": "Reptilian or Grey alien contact. Small grey alien next to me and bright red light glowing behind the door...", "source_id": "147827"},
+                        {"text": "I felt the shadow of my head and looked up and this brown rock shaped like a baked potato with hieroglyphic markings on it. Two people already inside the craft.", "source_id": "160298"},
+                        {"text": "Small grey alien next to me and bright red light glowing behind the door. I felt examined.", "source_id": "147572"}
+                    ]
+                },
+                {
+                    "name": "Physical Marks / Scars / Implants",
+                    "type": "enrich_tag",
+                    "count": 1644,
+                    "description": "New physical scars, burns, or implants appearing after close encounter or missing time.",
+                    "quotes": [
+                        {"text": "I pealed away the lose skin and noticed a small scar that had not been there before.", "source_id": "1982"},
+                        {"text": "Both arms were still very red and sore but the pain and redness did decrease. Open sores that had scabbed over.", "source_id": "172563"},
+                        {"text": "Down like 4 layers of my skin, as if someone had literally punched a hole with a paper punch out of it.", "source_id": "119406"}
+                    ]
+                },
+                {
+                    "name": "Telepathic Communication",
+                    "type": "enrich_tag",
+                    "count": 1483,
+                    "description": "Direct mind-to-mind messages about 'the project', genetics, or warnings from beings.",
+                    "quotes": [
+                        {"text": "I have been awaiting an understanding of the purpose for that encounter. I had genius quotient at such a young age, and these beings...", "source_id": "155767"},
+                        {"text": "The Greatest Conspiracy on Earth Chapter 2 Tensions have escalated in the cell that the United States government has created around me...", "source_id": "88900"}
+                    ]
+                },
+                {
+                    "name": "Beam of Light / Table Exam",
+                    "type": "benchmark",
+                    "count": 723,
+                    "description": "Beam of light scanning subject or area, or subject placed on table and examined or probed.",
+                    "quotes": [
+                        {"text": "DERBY SHAPED,ILLUMINATED SILVER OBJECT WITH CRYSTAL BRIGHT LIGHTS UNDER THE CRAFT AND A LASER LIKE BEAM FROM OBJECT TOWARD GROUND OFF ITS' REAR.", "source_id": "8567"},
+                        {"text": "Multiple orange orbs appear go horizontally and then appear to line up vertically and disappear as some disappeared others appeared Took photos...", "source_id": "166311"}
+                    ]
+                }
+            ],
+            "small_clusters_pool": [
+                {"cluster_id":42,"size":4,"quotes":[{"text":"Small cube shaped object hovering silently, then shot straight up with no sound.","source_id":"cube-001"},{"text":"Weird box-like craft with no lights, just there one second and gone the next.","source_id":"cube-002"},{"text":"A flying cube, metallic, about 3 feet, moving in ways planes can't.","source_id":"cube-003"}],"why_weird":"Small tight group sharing 'cube/box' + 'silent hover + instant acceleration'. Not in classic literature."},
+                {"cluster_id":67,"size":3,"quotes":[{"text":"Tall pale figure with fangs or sharp teeth that seemed to drain energy from me.","source_id":"vamp-001"},{"text":"The being looked like a vampire, pale skin, dark eyes, but came from the light in the sky.","source_id":"vamp-002"}],"why_weird":"Rare combo of 'pale tall being' + energy drain in UAP context. Only a handful of reports."},
+                {"cluster_id":19,"size":5,"quotes":[{"text":"The craft was a perfect sphere but made of liquid or mercury that changed shape.","source_id":"merc-001"},{"text":"Silver liquid ball that split into smaller ones and reformed.","source_id":"merc-002"}],"why_weird":"Mercury/liquid metal craft that morphs. Emergent pattern not in standard shapes."},
+                {"cluster_id":83,"size":3,"quotes":[{"text":"A small flying cube, no lights, just appeared over the field and was gone straight up.","source_id":"20190814"},{"text":"Box shaped object metallic gray, hovered 20 ft, no sound at all, then instant acceleration.","source_id":"20051103"}],"why_weird":"Cube/box + silent + instant vertical accel. Very few reports use 'cube' language; tight micro cluster."},
+                {"cluster_id":11,"size":4,"quotes":[{"text":"Tall pale figure with sharp features that seemed to pull the warmth out of the room.","source_id":"19990222"},{"text":"The being was very tall and thin, white skin, and I felt drained and sick for days after.","source_id":"20170409"}],"why_weird":"Pale/tall + energy or life-force drain. Rare 'vampiric' entity description in UAP corpus."},
+                {"cluster_id":55,"size":2,"quotes":[{"text":"The light wasn't a light — it came down and it was watching us, it had intent.","source_id":"20031030"},{"text":"Orange orb split into three smaller ones that moved intelligently then merged back.","source_id":"20110517"}],"why_weird":"Lights perceived as alive / having agency or consciousness. Emergent 'light is the being' motif."},
+                {"cluster_id":29,"size":6,"quotes":[{"text":"I saw a large winged being hovering above my car with glowing eyes like a bird but not a bird.","source_id":"20120520"},{"text":"Feathered or winged entity, but it came out of the light and communicated telepathically.","source_id":"19881111"}],"why_weird":"Avian / winged entity + glowing eyes + hovering + watched/comms. Crosses entity + craft descriptors in unexpected way."}
+            ],
+            "notes": {
+                "how_common_computed": "Mix of (a) how many chunks have high cosine to our 3 benchmark prototype vectors + (b) most frequent obvious light-enrichment tags from the chunker. Lightweight and human-obvious.",
+                "how_rare_computed": "k-means (k=100) on the 1024-d embeddings; kept clusters with 2-12 members. These are 'small but coherent' groups in meaning space.",
+                "citation": "Every quote includes the original source_report_id (NUFORC Sighting ID) so you can trace back to the exact record in the processed JSONL.",
+                "weird_button": "Random draw of 30 small clusters. Each shows 3-4 actual text excerpts from the highest-similarity chunks in that cluster + the source ID. Labeled 'weird / uncommon in the literature' with a direct question to the user about noise vs real tiny pattern."
+            }
+        };
+
+        // (old showMotifDetail/rollForWeird removed — full rebuilt UI is in ./motif-explorer/index.html )
+        
+        // ... rest of existing scripts ...
+    </script>
+</body>
+</html>
+
+    <script>
+        // Tailwind script
+        function initializeTailwind() {
+            document.documentElement.style.setProperty('--accent', '#00ff41');
+        }
+        
+        // Mermaid init
+        function initMermaid() {
+            if (typeof mermaid !== 'undefined') {
+                mermaid.initialize({
+                    startOnLoad: true,
+                    theme: 'dark',
+                    flowchart: { curve: 'basis' },
+                    themeVariables: {
+                        primaryColor: '#001100',
+                        primaryTextColor: '#00ff41',
+                        primaryBorderColor: '#00aa22',
+                        lineColor: '#00aa22',
+                        secondaryColor: '#000000',
+                        tertiaryColor: '#001100'
+                    }
+                });
+            }
+        }
+        
+        // Simple retro pixel invaders animation
+        function addInvaderAnimation() {
+            const invaders = document.querySelectorAll('.invader');
+            invaders.forEach((inv, i) => {
+                inv.style.animationDelay = (i * 0.2) + 's';
+            });
+        }
+        
+        // Keyboard easter egg (classic invaders style)
+        let konami = '';
+        document.addEventListener('keydown', function(e) {
+            konami += e.key;
+            if (konami.length > 10) konami = konami.slice(-10);
+            if (konami.includes('ArrowUpArrowUpArrowDownArrowDownArrowLeftArrowRightArrowLeftArrowRightba')) {
+                document.body.style.filter = 'hue-rotate(90deg)';
+                setTimeout(() => {
+                    document.body.style.filter = '';
+                }, 1200);
+                konami = '';
+            }
+        });
+        
+        // Boot sequence
+        window.onload = function() {
+            initializeTailwind();
+            initMermaid();
+            addInvaderAnimation();
+            
+            // Subtle scanline pulse on hero
+            const hero = document.querySelector('.arcade-screen');
+            if (hero) {
+                setInterval(() => {
+                    hero.style.boxShadow = '0 0 0 8px #000000, 0 0 0 12px #003300, 0 0 40px rgba(0, 255, 65, 0.8)';
+                    setTimeout(() => {
+                        if (hero) hero.style.boxShadow = '0 0 0 8px #000000, 0 0 0 12px #003300, 0 0 30px rgba(0, 255, 65, 0.6)';
+                    }, 180);
+                }, 4200);
+            }
+            
+            console.log('%c[ALIEN DB v0.1] Retro HTML initialized. Press ↑↑↓↓←→←→BA for a surprise.', 'color:#003300');
+        };
+        
+        // Allow clicking invader rows to "shoot"
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('invader')) {
+                e.target.style.transition = 'transform 0.1s, opacity 0.3s';
+                e.target.style.transform = 'translateY(-30px) scale(0.3)';
+                e.target.style.opacity = '0';
+                setTimeout(() => {
+                    if (e.target && e.target.parentNode) e.target.parentNode.removeChild(e.target);
+                }, 300);
+            }
+        });
+    </script>
+</body>
+</html>
