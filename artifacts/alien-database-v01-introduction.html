@@ -410,12 +410,12 @@
                 <h4 class="text-[#ff00aa] mb-2">PIPELINE FLOW</h4>
                 <pre class="mermaid">
 flowchart LR
-    A[HF Dataset<br/>kcimc/NUFORC] -->|Streaming + Dedup| B[Processed JSONL<br/>295,697 reports]
-    B -->|Recursive chunker<br/>2200 char + 300 overlap| C[Chunks JSONL<br/>21,179 chunks]
-    C -->|Light rule enrich<br/>(or LLM if keys)| D[Enriched Chunks]
-    D -->|e5-large-v2<br/>passage: prefix + normalize| E[1024-d Vectors]
-    E -->|Custom REST client<br/>/vectors/upsert| F[Pinecone<br/>alien-db-uap]
-    F -->|Hybrid search<br/>+ metadata filters| G[Gradio UI + Synthesis]
+    A[HF Dataset kcimc/NUFORC] --> B[Processed JSONL 295697 reports]
+    B --> C[Chunks JSONL 21179 chunks]
+    C --> D[Enriched Chunks]
+    D --> E[1024-d Vectors]
+    E --> F[Pinecone alien-db-uap]
+    F --> G[Gradio UI + Synthesis]
                 </pre>
             </div>
             
@@ -519,11 +519,11 @@ flowchart LR
                 <h4 class="mb-2">How Pinecone + Hybrid Search Works Here</h4>
                 <pre class="mermaid">
 flowchart LR
-    Q[User Query] -->|query: prefix + e5| V[Query Vector]
-    V --> P[Pinecone /query]
-    P -->|cosine similarity| R[Top-k chunks]
-    F[Metadata Filter<br/>shape=Triangle<br/>possible_abduction=true] --> P
-    R --> S[Evidence pool<br/>with chunk_text + full meta]
+    Q[User Query] --> V[Query Vector]
+    V --> P[Pinecone query]
+    P --> R[Top-k chunks]
+    F[Metadata Filter shape=Triangle] --> P
+    R --> S[Evidence pool]
                 </pre>
             </div>
         </div>

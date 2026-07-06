@@ -417,7 +417,7 @@ This is why the quotes + citations + "why this feels like a motif" + "noise or a
 - Benchmark motifs already defined for scoring.
 - Supporting scripts for download, chunk/enrich, seed, replay.
 - Obsidian "alien database" thinking layer (plans, status, entity pages for surfaced archetypes like Gray Being Medical Exam and Missing Time).
-- **Motif Explorer (Primary Feature)**: Rebuilt using Claude Design assets (arcade CRT bezels, animated pixel invaders with per-motif bitmaps + shoot-on-click, full scanning ROLL animation, GAME-OVER overlays, 8-bit sounds, 2D semantic plot, weird vote). Real 5-common counts from data/motifs.json. Launch the polished demo at `artifacts/motif-explorer/index.html` (folder with index.html + JS). Gradio links to it. Full math explainer below.
+- **Motif Explorer (Primary Feature)**: Rebuilt using Claude Design assets (arcade CRT bezels, animated pixel invaders with per-motif bitmaps + shoot-on-click, full scanning ROLL animation, GAME-OVER overlays, 8-bit sounds, 2D semantic plot, weird vote). Now uses *real* dynamic 5 from compute_motif_clusters.py (Silent Triangle Hover Animal Reaction 20775, Disk Beam Livestock 20745, Gray Medical Exam Missing Time 16088 + top enrich tags). ROLL keeps illustrative for demo (0 small clusters in this k=100 run). Launch `artifacts/motif-explorer/index.html`. Gradio loads json live. Math below.
 
 **Current primary use:** Research + demonstration of vector database power for narrative motif discovery (especially how semantic geometry surfaces motifs and enables transparent inference on noisy human stories). The Motif Explorer is the flagship interactive for showing "what the embeddings actually captured".
 
