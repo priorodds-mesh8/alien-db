@@ -7,7 +7,7 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/", "destination": "/artifacts/alien-database-v01-introduction.html" }
+    { "source": "/", "destination": "/artifacts/alien-database-v01-introduction" }
   ],
   "redirects": [
     { "source": "/motif-explorer", "destination": "/artifacts/motif-explorer/", "permanent": false }
