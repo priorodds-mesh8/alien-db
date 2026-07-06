@@ -3,7 +3,23 @@
    =========================================================================== */
 (function () {
   "use strict";
-  const { PIXEL_COLORS, COMMON_MOTIFS, RARE_MOTIFS } = window.MOTIF_DATA;
+  // Fail soft if motif-data.js failed to load (404 / blocked) instead of throwing
+  // a TypeError on destructure, which would leave a blank page.
+  const DATA = window.MOTIF_DATA || {};
+  const { PIXEL_COLORS = {}, COMMON_MOTIFS = [], RARE_MOTIFS = [] } = DATA;
+  if (!window.MOTIF_DATA) {
+    const banner = document.createElement("div");
+    banner.setAttribute("role", "alert");
+    banner.style.cssText =
+      "position:fixed;top:0;left:0;right:0;z-index:10000;background:#3a0d0d;color:#ff8f8f;" +
+      "font-family:monospace;padding:10px 14px;text-align:center;border-bottom:2px solid #ff3ea5";
+    banner.textContent = "⚠ MOTIF DATA FAILED TO LOAD — display incomplete. Try a hard refresh.";
+    document.addEventListener("DOMContentLoaded", () => document.body.prepend(banner));
+  }
+
+  // Respect users who asked the OS to reduce motion (photosensitivity / vestibular).
+  const REDUCED_MOTION =
+    window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* ---------------------------------------------------------------------- *
    * Web Audio — tiny 8-bit blips (toggleable, off by default)
@@ -168,24 +184,41 @@
   const overlay = document.getElementById("overlay");
   const overlayCard = document.getElementById("overlayCard");
 
+  let lastFocused = null;
   function showOverlay(html, pink) {
+    lastFocused = document.activeElement;
     overlayCard.classList.toggle("bezel-pink", !!pink);
     overlayCard.innerHTML = html;
     overlay.classList.add("show");
+    overlay.setAttribute("aria-hidden", "false");
     overlayCard.scrollTop = 0;
     overlay.scrollTop = 0;
     document.body.style.overflow = "hidden";
     const closeBtn = overlayCard.querySelector("[data-close]");
-    if (closeBtn) closeBtn.focus();
+    (closeBtn || overlayCard).focus();
   }
   function hideOverlay() {
     overlay.classList.remove("show");
+    overlay.setAttribute("aria-hidden", "true");
     document.body.style.overflow = "";
     sfx.close();
+    // Return focus to whatever opened the dialog (keyboard users don't lose their place).
+    if (lastFocused && typeof lastFocused.focus === "function") lastFocused.focus();
   }
   overlay.addEventListener("click", (e) => { if (e.target === overlay) hideOverlay(); });
   overlayCard.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) hideOverlay(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && overlay.classList.contains("show")) hideOverlay(); });
+  document.addEventListener("keydown", (e) => {
+    if (!overlay.classList.contains("show")) return;
+    if (e.key === "Escape") { hideOverlay(); return; }
+    // Minimal focus trap: keep Tab within the dialog while it's open.
+    if (e.key === "Tab") {
+      const f = overlayCard.querySelectorAll('button, [href], input, [tabindex]:not([tabindex="-1"])');
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
 
   function esc(s) {
     return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -445,6 +478,7 @@
    * ---------------------------------------------------------------------- */
   function starfield() {
     const cv = document.getElementById("starfield");
+    if (!cv) return;
     const ctx = cv.getContext("2d");
     let stars = [];
     function resize() {
@@ -456,6 +490,20 @@
         stars.push({ x: Math.random() * cv.width, y: Math.random() * cv.height, s: Math.random() * 1.6 + 0.4, tw: Math.random() * Math.PI * 2, sp: 0.01 + Math.random() * 0.03 });
       }
     }
+    function paintStatic() {
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      for (const st of stars) {
+        ctx.fillStyle = "rgba(180,255,180,0.6)";
+        ctx.fillRect(st.x, st.y, st.s, st.s);
+      }
+    }
+    window.addEventListener("resize", () => { resize(); if (REDUCED_MOTION) paintStatic(); });
+    resize();
+
+    // Reduced-motion: render a still starfield, no rAF loop at all.
+    if (REDUCED_MOTION) { paintStatic(); return; }
+
+    let rafId = null;
     function frame() {
       ctx.clearRect(0, 0, cv.width, cv.height);
       for (const st of stars) {
@@ -464,10 +512,16 @@
         ctx.fillStyle = `rgba(180,255,180,${a})`;
         ctx.fillRect(st.x, st.y, st.s, st.s);
       }
-      requestAnimationFrame(frame);
+      rafId = requestAnimationFrame(frame);
     }
-    window.addEventListener("resize", resize);
-    resize();
+    // Pause the loop when the tab is hidden so we don't burn battery in the background.
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        if (rafId != null) { cancelAnimationFrame(rafId); rafId = null; }
+      } else if (rafId == null) {
+        frame();
+      }
+    });
     frame();
   }
 

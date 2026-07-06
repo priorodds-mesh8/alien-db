@@ -205,6 +205,13 @@
   .pill.off { color: var(--green-dim); border-color: var(--green-dim); }
 
   a.linkish { color: var(--cyan); text-decoration: none; border-bottom: 1px dotted var(--cyan); }
+
+  /* ---- Accessibility: honor reduced-motion (photosensitivity / vestibular) ---- */
+  @media (prefers-reduced-motion: reduce) {
+    .crt-flicker { animation: none !important; }
+    .anim-bob, .anim-march, .blink, .ticker-track, .overlay-card, .shot { animation: none !important; }
+    * { transition-duration: 0.001ms !important; }
+  }
 </style>
 </head>
 <body class="crt-flicker">
@@ -310,8 +317,8 @@
   </main>
 
   <!-- ============ GAME OVER / DETAIL OVERLAY ============ -->
-  <div class="overlay-back" id="overlay">
-    <div class="bezel overlay-card w-full max-w-3xl p-6 sm:p-8 my-4" id="overlayCard"></div>
+  <div class="overlay-back" id="overlay" role="dialog" aria-modal="true" aria-label="Motif detail" aria-hidden="true">
+    <div class="bezel overlay-card w-full max-w-3xl p-6 sm:p-8 my-4" id="overlayCard" tabindex="-1" aria-live="polite"></div>
   </div>
 
   <script src="motif-data.js"></script>

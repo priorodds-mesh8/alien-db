@@ -15,3 +15,15 @@ __pycache__/
 *.npy
 *.jsonl
 node_modules/
+
+# ---- Prevent Vercel from auto-detecting a Python project ----
+# The root requirements.txt (torch/gradio/sentence-transformers) made Vercel run a
+# multi-GB CUDA/torch install during build, which blew past limits and served HTTP 500.
+# This is a static-only deploy (artifacts/), so exclude all Python surfaces.
+requirements.txt
+setup.sh
+ui/
+packages/
+scripts/
+fixtures/
+*.py

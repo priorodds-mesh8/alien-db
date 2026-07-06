@@ -17,6 +17,11 @@ from typing import List, Dict, Any, Optional
 import urllib.request
 import urllib.error
 
+# Network timeouts (seconds) so a single stalled connection can't hang a
+# multi-hour seed or a UI query forever. Data-plane writes get a longer budget.
+_HTTP_TIMEOUT = 30
+_UPSERT_TIMEOUT = 120
+
 
 def _get_embed_fns():
     """Lazy import so sentence-transformers/torch not required unless actually using Pinecone real path."""
@@ -25,7 +30,7 @@ def _get_embed_fns():
 
 
 class PineconeClient:
-    def __init__(self, api_key: str, index_name: str = "alien-db-uap", namespace: str = "nuforc-v0.1-proto"):
+    def __init__(self, api_key: str, index_name: str = "alien-db-uap", namespace: str = "nuforc-full"):
         self.api_key = api_key
         self.index_name = index_name
         self.namespace = namespace
@@ -37,7 +42,9 @@ class PineconeClient:
         if not key:
             return None
         idx = os.getenv("PINECONE_INDEX", "alien-db-uap")
-        ns = os.getenv("PINECONE_NAMESPACE", "nuforc-v0.1-proto")
+        # Default to the full corpus (21,179 chunks) that the UI advertises, not the
+        # 105-chunk proto. Override with PINECONE_NAMESPACE=nuforc-v0.1-proto for sample runs.
+        ns = os.getenv("PINECONE_NAMESPACE", "nuforc-full")
         return cls(key, idx, ns)
 
     def _get_host(self) -> str:
@@ -48,7 +55,7 @@ class PineconeClient:
             "Api-Key": self.api_key,
             "X-Pinecone-API-Version": "2026-04",
         })
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, timeout=_HTTP_TIMEOUT) as resp:
             data = json.loads(resp.read())
         host = data.get("host")
         if not host:
@@ -148,7 +155,7 @@ class PineconeClient:
                 method="POST"
             )
             try:
-                with urllib.request.urlopen(req) as r:
+                with urllib.request.urlopen(req, timeout=_UPSERT_TIMEOUT) as r:
                     r.read()
                 count += len(batch_recs)
             except urllib.error.HTTPError as e:
@@ -171,7 +178,7 @@ class PineconeClient:
             method="POST"
         )
         try:
-            with urllib.request.urlopen(req) as r:
+            with urllib.request.urlopen(req, timeout=_UPSERT_TIMEOUT) as r:
                 r.read()
         except urllib.error.HTTPError as e:
             # 404 or empty ok-ish
@@ -206,7 +213,7 @@ class PineconeClient:
             },
             method="POST"
         )
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, timeout=_HTTP_TIMEOUT) as resp:
             data = json.loads(resp.read())
         matches = data.get("matches", []) or data.get("result", {}).get("hits", [])
         out = []
