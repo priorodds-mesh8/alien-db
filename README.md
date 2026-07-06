@@ -73,9 +73,12 @@ Both can coexist on the same underlying data. The script above is a convenience 
 
 ## Live Instance
 - GitHub: https://github.com/priorodds-mesh8/alien-db (monorepo)
-- Vercel: https://alien-n36cd4dx3-joellang356-6818s-projects.vercel.app (or https://alien-db-chi.vercel.app alias)
-  - Root: the exhaustive intro + links to Motif Explorer
-  - /motif-explorer : the full rebuilt arcade UI from Claude Design assets (pixel invaders, ROLL, etc.)
-- Note: May require login initially. In Vercel dashboard for the project, go to Settings > General and disable "Login to View" / authentication to make fully public.
+- **Live: https://alien-db-chi.vercel.app** — canonical production URL for this project.
+  (The bare `alien-db.vercel.app` subdomain belongs to a different Vercel project and is not ours.)
+  - Root (`/`): the exhaustive intro + links to Motif Explorer
+  - `/motif-explorer`: the full rebuilt arcade UI from Claude Design assets (pixel invaders, ROLL, etc.)
+- Static-only deploy: `vercel.json` (`installCommand` no-op, `cleanUrls`, rewrites/redirects) + `.vercelignore`
+  excludes all Python surfaces so Vercel does not try to install torch/CUDA (that install phase was the
+  cause of the earlier HTTP 500).
 
-Deploys are connected to git pushes.
+Deploys are connected to git pushes to `main`.
