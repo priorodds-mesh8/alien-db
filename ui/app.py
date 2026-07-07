@@ -31,7 +31,8 @@ load_dotenv()  # project .env first (XAI preferred, PINECONE_*)
 
 from uap_corpus import (
     PineconeClient, write_event, new_run_id, GLOBAL_METER,
-    get_benchmark_records, UAP_BENCHMARK_RECORDS
+    get_benchmark_records, UAP_BENCHMARK_RECORDS,
+    fabrication_eval, build_shape_filter,
 )
 
 XAI_API_KEY = os.getenv("XAI_API_KEY")
@@ -74,26 +75,6 @@ def local_search(query: str, shape: str = "", has_abduction: bool = False, top_k
     hits.sort(key=lambda x: x["_score"], reverse=True)
     return hits[:top_k]
 
-def toy_fabrication_eval(synthesis: str, evidence_chunks: List[str]) -> Dict[str, Any]:
-    """Very small stand-in for the real fabrication-only rubric.
-    Only flags obvious contradictions or very specific claims with zero support in the provided evidence.
-    Real version reuses the hallucination.ts logic against the raw chunk texts.
-    """
-    evidence = " ".join(evidence_chunks).lower()
-    fabricated = []
-    # naive: look for strong specifics not in evidence
-    strong_claims = ["implant", "hybrid", "government cover", "exact time 03:17", "named the being 'zor'"]
-    for claim in strong_claims:
-        if claim in synthesis.lower() and claim not in evidence:
-            fabricated.append(claim)
-    total_claims = max(3, len(synthesis.split(". ")))
-    score = 1.0 - (len(fabricated) / total_claims)
-    return {
-        "score": round(max(0.6, min(0.98, score)), 3),
-        "fabricated": fabricated,
-        "notes": "Toy eval for demo. Real eval uses the exact rubric from agentic-sdr-demo/packages/agents/src/eval/hallucination.ts against raw chunk text only."
-    }
-
 def _local_synthesize(query: str, chunks: List[Dict]) -> str:
     """Evidence-only fallback synthesis. No LLM required. Grounded strictly in the retrieved chunks."""
     if not chunks:
@@ -129,16 +110,66 @@ def _local_synthesize(query: str, chunks: List[Dict]) -> str:
     excerpts = []
     for c in chunks[:3]:
         txt = (c.get("chunk_text") or "")[:180].replace("\n", " ").strip()
-        excerpts.append(f"• {txt}...")
+        sid = (c.get("metadata", {}) or {}).get("source_report_id") or c.get("source_report_id") or c.get("id") or "?"
+        excerpts.append(f"• \"{txt}...\" — #{sid}")
+
+    # Pattern notes DERIVED from these chunks' enrichment fields (not a canned paragraph).
+    # Aggregate the entities/effects/sequence the enricher actually extracted from the retrieved
+    # reports, so the description reflects THIS result set rather than a hardcoded archetype.
+    from collections import Counter as _Counter
+    ent_c, eff_c, seq_c = _Counter(), _Counter(), _Counter()
+    for c in chunks:
+        for e in (c.get("entities") or []):
+            desc = e.get("desc") if isinstance(e, dict) else str(e)
+            if desc:
+                ent_c[desc] += 1
+        for ef in (c.get("effects") or []):
+            if ef:
+                eff_c[str(ef)] += 1
+        for sq in (c.get("sequence") or []):
+            if sq:
+                seq_c[str(sq)] += 1
+
+    def _top(counter, n=4):
+        return "; ".join(f"{k} (×{v})" for k, v in counter.most_common(n))
+
+    derived_bits = []
+    if ent_c:
+        derived_bits.append(f"**Entities described:** {_top(ent_c)}")
+    if eff_c:
+        derived_bits.append(f"**Reported effects:** {_top(eff_c)}")
+    if seq_c:
+        derived_bits.append(f"**Event sequence elements:** {_top(seq_c)}")
+    if derived_bits:
+        pattern_notes = "**Pattern notes (derived from these " + str(len(chunks)) + " chunks):**\n" + "\n".join(derived_bits)
+    else:
+        pattern_notes = ("**Pattern notes:** The retrieved chunks carry no structured "
+                         "entity/effect tags from the light enricher, so no motif summary is "
+                         "asserted here — read the excerpts above directly.")
+
+    # The disclaimer below is a fixed methodological caveat, NOT an analysis of these chunks.
+    # It is tagged [STATIC] so the fabrication evaluator does not score it as (un)grounded and so
+    # readers can see it is boilerplate rather than a claim about the retrieved evidence.
+    static_disclaimer = (
+        "[STATIC] **Critical limits & mundane alternatives (fixed methodological note, not derived "
+        "from these chunks):** These are anecdotal, unverified public reports collected over decades. "
+        "Abduction-narrative motifs have circulated widely in books, media, and hypnosis sessions for "
+        "decades, creating real risk of cultural contamination, suggestion, confabulation, or false "
+        "memory. Sleep paralysis, hypnagogic hallucination, hoaxes, misidentification of aircraft/drones, "
+        "and psychological factors remain plausible for any individual case. No physical evidence, "
+        "independent corroboration, or causal conclusion can be drawn from these texts alone; the data "
+        "only surfaces recurring *reported* motifs for further (skeptical) investigation."
+    )
 
     return (
-        f"**Local evidence-based analysis** (no LLM used — keys missing/invalid/ no credits. Strictly from the {len(chunks)} retrieved chunks only):\n\n"
+        f"**Local evidence-based analysis** (no LLM used — keys missing/invalid/no credits. "
+        f"Strictly from the {len(chunks)} retrieved chunks only):\n\n"
         f"**Shapes in results:** {top_shapes}\n"
         f"**Locations:** {top_locs}\n"
         f"**Recurring terms:** {common_terms}\n\n"
         "Key excerpts from top matches:\n" + "\n".join(excerpts) + "\n\n"
-        "**Pattern notes (purely descriptive):** The retrieved reports describe close-range encounters with small gray or humanoid figures, often with large dark eyes, in contexts involving medical-like procedures, tables or beams, missing time, and strong emotional or physical after-effects. Some mention telepathic elements or paralysis. A few include animal reactions or unusual lights/craft preceding the close encounter.\n\n"
-        "**Critical limits & mundane alternatives (always included):** These are anecdotal, unverified public reports collected over decades. Descriptions of small gray beings, black eyes, missing time, and medical exams have circulated widely in books, media, and hypnosis sessions since the late 1980s (e.g. Hopkins, Jacobs, Strieber narratives). This creates a high risk of cultural contamination, suggestion, confabulation, or false memory. Sleep paralysis, hypnagogic hallucinations, hoaxes, misidentification of aircraft/drones, and psychological factors remain plausible explanations for any individual case. No physical evidence, independent corroboration, or causal conclusions can be drawn from these texts alone. The data can only surface recurring *reported* motifs for further (skeptical) investigation."
+        + pattern_notes + "\n\n"
+        + static_disclaimer
     )
 
 
@@ -210,8 +241,9 @@ def run_analysis(query: str, shape_filter: str, abduction_only: bool):
     # Use Pinecone client (falls back internally if no key)
     client = PineconeClient.from_env()
     filters = {}
-    if shape_filter:
-        filters["shape"] = {"$eq": shape_filter}
+    # Case-robust shape filter: dropdown may emit lowercase while NUFORC metadata is Title-case;
+    # Pinecone $eq is case-sensitive, so build a $in over casing variants (see build_shape_filter).
+    filters.update(build_shape_filter(shape_filter))
     if abduction_only:
         filters["possible_abduction"] = {"$eq": True}
 
@@ -254,7 +286,7 @@ def run_analysis(query: str, shape_filter: str, abduction_only: bool):
     evidence_chunks = [h.get("chunk_text", "") for h in hits]
     synthesis = synthesize(query, hits)
     GLOBAL_METER.log_call("demo-synth", len(query) // 4, len(synthesis) // 4, cost_usd=0.001 if ANTHROPIC_KEY else 0.0)
-    eval_res = toy_fabrication_eval(synthesis, evidence_chunks)
+    eval_res = fabrication_eval(synthesis, evidence_chunks)
 
     # Emit tool.result
     write_event(run_id, "tool.result", {
@@ -408,7 +440,7 @@ with gr.Blocks(title="Alien Database — v0.1 Explorer") as demo:
     gr.Markdown("# Alien Database — v0.1 (Glass-Box UAP RAG prototype)\n**21,179 NUFORC chunks** (full deduplicated corpus) • **Real e5-large-v2 embeddings** in Pinecone (1024d cosine) + hybrid filters • Local evidence-based synthesis when LLM keys unavailable/invalid/no credits • fabrication-aware eval • motif benchmarks • replayable JSONL traces\n\nSemantic search is now live against the full corpus: similar meaning (not just keywords) surfaces via vector cosine. See CLAUDE.md + plan HTML in Obsidian for usage and the exact RAG flow. LLM synthesis requires a working XAI_API_KEY (with credits) or ANTHROPIC_API_KEY.")
     with gr.Row():
         q = gr.Textbox(label="Semantic query", value="small gray beings large black eyes medical examination missing time", lines=2)
-        shape = gr.Dropdown(["", "triangle", "light", "disk", "circle"], label="Shape filter", value="")
+        shape = gr.Dropdown(["", "Triangle", "Light", "Disk", "Circle", "Sphere", "Fireball", "Oval"], label="Shape filter (NUFORC Title-case)", value="")
         abd = gr.Checkbox(label="Possible abduction only", value=True)
     run_btn = gr.Button("Analyze patterns (retrieve + synthesize + eval)", variant="primary")
 

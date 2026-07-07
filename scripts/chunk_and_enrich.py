@@ -32,6 +32,35 @@ except ImportError:
 DEFAULT_IN = Path("data/processed/nuforc-sample.jsonl")
 DEFAULT_OUT = Path("data/chunks/nuforc-chunks.jsonl")
 
+# Boolean flags emitted by download_nuforc.py. All of these must be threaded into chunk
+# metadata (they were previously dropped except possible_abduction) so the UI can filter on
+# them and the Report Drawer can surface them.
+BOOLEAN_FLAGS = (
+    "possible_abduction",
+    "missing_time",
+    "marks_on_body",
+    "landed",
+    "lights_on_object",
+    "animals_reacted",
+)
+
+
+def build_chunk_metadata(r: Dict[str, Any]) -> Dict[str, Any]:
+    """Chunk-level metadata from a source report. Includes shape_lc for a durable, case-insensitive
+    shape filter and threads every boolean flag through (not just possible_abduction)."""
+    shape = r.get("shape")
+    md: Dict[str, Any] = {
+        "occurred": r.get("occurred"),
+        "location": r.get("location"),
+        "shape": shape,
+        "shape_lc": shape.lower() if isinstance(shape, str) else None,
+        "observer_count": r.get("observer_count"),
+        "url": r.get("url"),
+    }
+    for flag in BOOLEAN_FLAGS:
+        md[flag] = bool(r.get(flag) or False)
+    return md
+
 XAI_API_KEY = os.getenv("XAI_API_KEY")
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
 
@@ -218,13 +247,7 @@ def main():
                     "source_report_id": r["id"],
                     "source": r.get("source"),
                     "chunk_text": ch,
-                    "metadata": {
-                        "occurred": r.get("occurred"),
-                        "location": r.get("location"),
-                        "shape": r.get("shape"),
-                        "possible_abduction": r.get("possible_abduction"),
-                        "observer_count": r.get("observer_count"),
-                    },
+                    "metadata": build_chunk_metadata(r),
                     "entities": enrich.get("entities", []),
                     "effects": enrich.get("effects", []),
                     "sequence": enrich.get("sequence", []),
