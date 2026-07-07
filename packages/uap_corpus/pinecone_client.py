@@ -13,6 +13,8 @@ All operations are glass-box via events in calling code.
 """
 import os
 import json
+import time
+import random
 from typing import List, Dict, Any, Optional
 import urllib.request
 import urllib.error
@@ -21,6 +23,43 @@ import urllib.error
 # multi-hour seed or a UI query forever. Data-plane writes get a longer budget.
 _HTTP_TIMEOUT = 30
 _UPSERT_TIMEOUT = 120
+
+# Retry policy: a transient 429/5xx or a dropped connection should not abort a 1–3 hr seed.
+_MAX_ATTEMPTS = 5
+_RETRYABLE_STATUS = frozenset({408, 425, 429, 500, 502, 503, 504})
+
+
+def _is_retryable_status(code: int) -> bool:
+    return code in _RETRYABLE_STATUS
+
+
+def _backoff_seconds(attempt: int, base: float = 0.5, cap: float = 30.0) -> float:
+    """Exponential backoff with full jitter. attempt is 0-indexed."""
+    expo = min(cap, base * (2 ** attempt))
+    return random.uniform(0, expo)
+
+
+def _urlopen_retry(req: "urllib.request.Request", timeout: float):
+    """urlopen with retry/backoff on transient HTTP status and connection errors. Returns the open
+    response (caller uses it as a context manager). Raises the last error after _MAX_ATTEMPTS."""
+    last_err = None
+    for attempt in range(_MAX_ATTEMPTS):
+        try:
+            return urllib.request.urlopen(req, timeout=timeout)
+        except urllib.error.HTTPError as e:
+            last_err = e
+            if _is_retryable_status(e.code) and attempt < _MAX_ATTEMPTS - 1:
+                time.sleep(_backoff_seconds(attempt))
+                continue
+            raise
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            last_err = e
+            if attempt < _MAX_ATTEMPTS - 1:
+                time.sleep(_backoff_seconds(attempt))
+                continue
+            raise
+    if last_err:
+        raise last_err
 
 
 def _get_embed_fns():
@@ -55,7 +94,7 @@ class PineconeClient:
             "Api-Key": self.api_key,
             "X-Pinecone-API-Version": "2026-04",
         })
-        with urllib.request.urlopen(req, timeout=_HTTP_TIMEOUT) as resp:
+        with _urlopen_retry(req, timeout=_HTTP_TIMEOUT) as resp:
             data = json.loads(resp.read())
         host = data.get("host")
         if not host:
@@ -155,7 +194,7 @@ class PineconeClient:
                 method="POST"
             )
             try:
-                with urllib.request.urlopen(req, timeout=_UPSERT_TIMEOUT) as r:
+                with _urlopen_retry(req, timeout=_UPSERT_TIMEOUT) as r:
                     r.read()
                 count += len(batch_recs)
             except urllib.error.HTTPError as e:
@@ -178,12 +217,38 @@ class PineconeClient:
             method="POST"
         )
         try:
-            with urllib.request.urlopen(req, timeout=_UPSERT_TIMEOUT) as r:
+            with _urlopen_retry(req, timeout=_UPSERT_TIMEOUT) as r:
                 r.read()
         except urllib.error.HTTPError as e:
             # 404 or empty ok-ish
             if e.code not in (404,):
                 raise RuntimeError(f"Pinecone delete failed: {e.read()[:300]}") from e
+
+    def fetch_existing_ids(self, ids: List[str], batch_size: int = 100) -> set:
+        """Return the subset of `ids` already present in the namespace (via /vectors/fetch).
+        Lets a killed seed resume by skipping vectors that were already upserted (ids are
+        deterministic: '<report_id>-c<chunk_index>')."""
+        existing = set()
+        if not ids:
+            return existing
+        host = self._get_host()
+        import urllib.parse
+        for i in range(0, len(ids), batch_size):
+            chunk = ids[i:i + batch_size]
+            qs = urllib.parse.urlencode([("ids", x) for x in chunk] + [("namespace", self.namespace)])
+            req = urllib.request.Request(
+                f"{host}/vectors/fetch?{qs}",
+                headers={"Api-Key": self.api_key, "X-Pinecone-API-Version": "2025-10"},
+            )
+            try:
+                with _urlopen_retry(req, timeout=_HTTP_TIMEOUT) as r:
+                    data = json.loads(r.read())
+                existing.update((data.get("vectors") or {}).keys())
+            except urllib.error.HTTPError as e:
+                # A fetch failure shouldn't abort a resume; treat as "unknown -> not existing".
+                if e.code not in (404,):
+                    raise
+        return existing
 
     def search(self, query: str, top_k: int = 8, filters: Optional[Dict] = None) -> List[Dict]:
         """
@@ -213,7 +278,7 @@ class PineconeClient:
             },
             method="POST"
         )
-        with urllib.request.urlopen(req, timeout=_HTTP_TIMEOUT) as resp:
+        with _urlopen_retry(req, timeout=_HTTP_TIMEOUT) as resp:
             data = json.loads(resp.read())
         matches = data.get("matches", []) or data.get("result", {}).get("hits", [])
         out = []

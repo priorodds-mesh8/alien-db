@@ -27,8 +27,13 @@ def main():
     ap.add_argument("--input", dest="input_path", type=Path, default=Path("data/chunks/nuforc-chunks.jsonl"))
     ap.add_argument("--ns", default="nuforc-v0.1-proto")
     ap.add_argument("--reset", action="store_true", help="Delete all in namespace before upsert (clean for new full ingest)")
+    ap.add_argument("--resume", action="store_true", help="Skip chunk_ids already present in the namespace (resume a killed seed without re-embedding)")
     ap.add_argument("--batch-size", type=int, default=64, help="Chunks per embed+upsert batch (higher = faster, more mem)")
     args = ap.parse_args()
+
+    if args.reset and args.resume:
+        print("Refusing --reset and --resume together (--reset wipes the namespace, defeating resume).")
+        sys.exit(2)
 
     client = PineconeClient.from_env()
     if not client:
@@ -45,9 +50,21 @@ def main():
         client.delete_namespace(args.ns)
         print("Delete complete.")
 
-    print(f"Streaming + embedding + upserting from {args.input_path} to ns={args.ns} (batch={args.batch_size}) ...")
+    def _flush(batch, total, skipped):
+        """Embed+upsert a batch, skipping ids already present when --resume is set."""
+        if args.resume and batch:
+            existing = client.fetch_existing_ids([c.get("chunk_id") for c in batch if c.get("chunk_id")])
+            before = len(batch)
+            batch = [c for c in batch if c.get("chunk_id") not in existing]
+            skipped += before - len(batch)
+        n = client.upsert_chunks(batch) if batch else 0
+        return total + n, skipped
+
+    print(f"Streaming + embedding + upserting from {args.input_path} to ns={args.ns} "
+          f"(batch={args.batch_size}, resume={args.resume}) ...")
 
     total = 0
+    skipped = 0
     batch = []
     with args.input_path.open() as f:
         for line in f:
@@ -59,15 +76,16 @@ def main():
                 continue
             batch.append(c)
             if len(batch) >= args.batch_size:
-                n = client.upsert_chunks(batch)
-                total += n
+                total, skipped = _flush(batch, total, skipped)
                 batch = []
                 if total % 1000 == 0 or total <= 512:
-                    print(f"  upserted {total} chunks so far...")
+                    print(f"  upserted {total} chunks so far (skipped {skipped} already-present)...")
 
     if batch:
-        n = client.upsert_chunks(batch)
-        total += n
+        total, skipped = _flush(batch, total, skipped)
+
+    if args.resume:
+        print(f"Resume: skipped {skipped} chunks already present in ns={args.ns}.")
 
     print(f"\nDone. Total upserted {total} chunks with real embeddings to Pinecone ns={args.ns}")
     print(f"Index: {client.index_name} (dim=1024 cosine, e5-large-v2 client embeddings)")

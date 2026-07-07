@@ -22,15 +22,22 @@ Usage:
 
 from typing import List
 import os
+import threading
 import numpy as np
 
 _model = None
+_model_lock = threading.Lock()  # guard first-time load against concurrent Gradio requests
 MODEL_NAME = "intfloat/e5-large-v2"  # 1024 dim, strong retriever
 
 
 def get_model():
     global _model
-    if _model is None:
+    if _model is not None:
+        return _model
+    with _model_lock:
+        # double-checked: another thread may have loaded it while we waited for the lock
+        if _model is not None:
+            return _model
         # Lazy import so we don't require torch/sentence-transformers unless actually embedding
         import torch
         from sentence_transformers import SentenceTransformer
@@ -69,10 +76,10 @@ def embed_passages(texts: List[str]) -> List[List[float]]:
 
 
 def embed_query(text: str) -> List[float]:
-    """Embed a search query (use 'query:' prefix)."""
+    """Embed a search query (use 'query:' prefix). Rejects empty input rather than returning a
+    zero vector (a zero vector has undefined cosine direction and silently pollutes results)."""
     if not text or not text.strip():
-        # Return a zero vector as fallback (bad idea in prod, but for demo)
-        return [0.0] * 1024
+        raise ValueError("embed_query received an empty query; callers must guard empty input")
     model = get_model()
     prefixed = f"query: {text}"
     embedding = model.encode(

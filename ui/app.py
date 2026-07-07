@@ -206,6 +206,12 @@ def synthesize(query: str, chunks: List[Dict]) -> str:
                         max_tokens=1500,
                     )
                     if resp.choices:
+                        u = getattr(resp, "usage", None)
+                        GLOBAL_METER.log_call(
+                            model,
+                            getattr(u, "prompt_tokens", 0) or 0,
+                            getattr(u, "completion_tokens", 0) or 0,
+                        )  # cost priced from the per-model table (Grok is NOT free)
                         return resp.choices[0].message.content
                 except Exception:
                     continue
@@ -220,6 +226,12 @@ def synthesize(query: str, chunks: List[Dict]) -> str:
                 max_tokens=1500,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_prompt}]
+            )
+            u = getattr(resp, "usage", None)
+            GLOBAL_METER.log_call(
+                "claude-3-haiku-20240307",
+                getattr(u, "input_tokens", 0) or 0,
+                getattr(u, "output_tokens", 0) or 0,
             )
             return resp.content[0].text if resp.content else "No response from model."
         return _local_synthesize(query, chunks)
@@ -284,8 +296,9 @@ def run_analysis(query: str, shape_filter: str, abduction_only: bool):
     })
 
     evidence_chunks = [h.get("chunk_text", "") for h in hits]
+    # synthesize() self-meters real token usage into GLOBAL_METER when an LLM is used
+    # (priced per-model); the local fallback genuinely costs $0.
     synthesis = synthesize(query, hits)
-    GLOBAL_METER.log_call("demo-synth", len(query) // 4, len(synthesis) // 4, cost_usd=0.001 if ANTHROPIC_KEY else 0.0)
     eval_res = fabrication_eval(synthesis, evidence_chunks)
 
     # Emit tool.result
