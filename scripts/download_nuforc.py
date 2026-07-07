@@ -15,8 +15,12 @@ Saves records with canonical keys for downstream chunk/enrich. Public dataset (p
 """
 import argparse
 import json
+import sys
 from pathlib import Path
 from datasets import load_dataset
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "packages"))
+from uap_corpus.schema import report_is_valid  # stage-boundary contract
 
 DEFAULT_SAMPLE_OUT = Path("data/processed/nuforc-sample.jsonl")
 DEFAULT_FULL_OUT = Path("data/processed/nuforc-full.jsonl")
@@ -44,6 +48,7 @@ def main():
     seen_ids = set()
     written = 0
     total_seen = 0
+    invalid = 0
 
     with out_path.open("w") as f:
         for i, row in enumerate(ds):
@@ -78,6 +83,14 @@ def main():
                 "url": "https://nuforc.org/",
                 "raw": row,  # keep original for debugging / future enrichment
             }
+            # Stage-boundary check: surface schema drift (renamed/missing fields) without
+            # aborting the run — a malformed record is counted, not silently trusted downstream.
+            ok, err = report_is_valid(rec)
+            if not ok:
+                invalid += 1
+                if invalid <= 3:
+                    print(f"  [schema] report {sid} failed validation: {err.splitlines()[0]}")
+
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
             written += 1
 
@@ -86,6 +99,8 @@ def main():
 
     print(f"Done. Wrote {written} unique records -> {out_path}")
     print(f"(Scanned {total_seen} rows from HF, deduped on Sighting ID. Unique in corpus ~147891)")
+    if invalid:
+        print(f"[schema] {invalid} record(s) failed the Report contract — inspect before seeding.")
 
 if __name__ == "__main__":
     main()

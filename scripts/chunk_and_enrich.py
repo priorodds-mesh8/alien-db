@@ -13,11 +13,23 @@ import argparse
 import json
 import os
 import re
+import sys
 from pathlib import Path
 from typing import List, Dict, Any
 
 from dotenv import load_dotenv
 load_dotenv()  # Load local .env if present (project-specific keys)
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "packages"))
+from uap_corpus.schema import chunk_is_valid  # stage-boundary contract
+from uap_corpus.cost_meter import estimate_cost
+
+# Enrich cost ceiling (#11): LLM enrichment has no per-call price awareness by default, so a large
+# run could rack up unbounded cost. When --max-cost is set, real_enrich meters each call and, once
+# the budget is exhausted, degrades to light rule-based enrichment (logging the fallback).
+_ENRICH_MAX_COST = 0.0   # 0 == unlimited (set from --max-cost)
+_ENRICH_SPENT = 0.0
+_ENRICH_FALLBACKS = 0
 
 try:
     import anthropic
@@ -124,11 +136,22 @@ def light_enrich(narrative: str) -> Dict[str, Any]:
         effects.append("animal reactions (distress, hiding, freezing)")
     return {"entities": entities, "effects": effects, "sequence": seq}
 
+def _over_budget() -> bool:
+    return _ENRICH_MAX_COST > 0 and _ENRICH_SPENT >= _ENRICH_MAX_COST
+
+
 def real_enrich(narrative: str) -> Dict[str, Any]:
     """Prefer xAI (Grok) for structured JSON extraction of entities, effects, sequence.
     Falls back to Anthropic (Claude) if no XAI key.
     Uses the spirit of the pasted context prompt for objective analysis.
     """
+    global _ENRICH_SPENT, _ENRICH_FALLBACKS
+    if _over_budget():
+        _ENRICH_FALLBACKS += 1
+        if _ENRICH_FALLBACKS <= 3:
+            print(f"  [cost] enrich budget ${_ENRICH_MAX_COST:.2f} reached — degrading to light enrichment.")
+        return light_enrich(narrative)
+
     if XAI_API_KEY and OpenAI:
         try:
             client = OpenAI(
@@ -146,6 +169,8 @@ def real_enrich(narrative: str) -> Dict[str, Any]:
                 response_format={"type": "json_object"},
                 max_tokens=800,
             )
+            u = getattr(resp, "usage", None)
+            _ENRICH_SPENT += estimate_cost("grok-beta", getattr(u, "prompt_tokens", 0) or 0, getattr(u, "completion_tokens", 0) or 0)
             text = resp.choices[0].message.content if resp.choices else "{}"
             start = text.find("{")
             end = text.rfind("}") + 1
@@ -170,6 +195,8 @@ def real_enrich(narrative: str) -> Dict[str, Any]:
                 system=system,
                 messages=[{"role": "user", "content": user}],
             )
+            u = getattr(resp, "usage", None)
+            _ENRICH_SPENT += estimate_cost("claude-3-haiku-20240307", getattr(u, "input_tokens", 0) or 0, getattr(u, "output_tokens", 0) or 0)
             text = resp.content[0].text if resp.content else "{}"
             start = text.find("{")
             end = text.rfind("}") + 1
@@ -193,7 +220,12 @@ def main():
     ap.add_argument("--chunk-chars", type=int, default=2200)
     ap.add_argument("--enrich", choices=["light", "llm", "auto"], default="auto",
                     help="Enrichment mode. 'light' = rules only (recommended for full 148k+). 'llm' = always call xAI/Anthropic. 'auto' = llm only for small inputs.")
+    ap.add_argument("--max-cost", type=float, default=0.0,
+                    help="Hard USD ceiling for LLM enrichment; once reached, degrade to light rules. 0 = unlimited.")
     args = ap.parse_args()
+
+    global _ENRICH_MAX_COST
+    _ENRICH_MAX_COST = args.max_cost
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
@@ -218,6 +250,7 @@ def main():
     out_count = 0
     seen = set()  # simple dedup on normalized chunk text
     processed_reports = 0
+    invalid_chunks = 0
 
     with args.input_path.open() as fin, args.out.open("w") as fout:
         for i, line in enumerate(fin):
@@ -252,6 +285,11 @@ def main():
                     "effects": enrich.get("effects", []),
                     "sequence": enrich.get("sequence", []),
                 }
+                ok, err = chunk_is_valid(chunk_rec)
+                if not ok:
+                    invalid_chunks += 1
+                    if invalid_chunks <= 3:
+                        print(f"  [schema] chunk {chunk_rec.get('chunk_id')} failed validation: {err.splitlines()[0]}")
                 fout.write(json.dumps(chunk_rec, ensure_ascii=False) + "\n")
                 out_count += 1
 
@@ -260,6 +298,10 @@ def main():
 
     print(f"Wrote {out_count} chunks from {processed_reports} reports -> {args.out}")
     print("Note: For full corpus use --enrich light (default now for large). LLM enrichment per report is very expensive at scale.")
+    if invalid_chunks:
+        print(f"[schema] {invalid_chunks} chunk(s) failed the Chunk contract — inspect before seeding.")
+    if use_llm and _ENRICH_MAX_COST > 0:
+        print(f"[cost] LLM enrich spend ~${_ENRICH_SPENT:.3f} of ${_ENRICH_MAX_COST:.2f} ceiling; {_ENRICH_FALLBACKS} report(s) fell back to light.")
 
 if __name__ == "__main__":
     main()
