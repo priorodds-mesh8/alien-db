@@ -14,7 +14,7 @@ See CLAUDE.md for commands and reuse notes. See plan.md (and the rendered HTML i
    python scripts/download_nuforc.py --limit 2000
    python scripts/chunk_and_enrich.py --input data/processed/nuforc-sample.jsonl --out data/chunks/nuforc-chunks.jsonl --enrich light
    EMBEDDER_DEVICE=cpu python scripts/seed_uap.py --ns nuforc-v0.1-proto --input data/chunks/nuforc-chunks.jsonl --reset
-5. # full corpus (~296k reports -> 21k chunks)
+5. # full corpus (~148k reports -> 21k chunks)
    python scripts/download_nuforc.py --full
    python scripts/chunk_and_enrich.py --input data/processed/nuforc-full.jsonl --out data/chunks/nuforc-full-chunks.jsonl --enrich light
    EMBEDDER_DEVICE=cpu python scripts/seed_uap.py --ns nuforc-full --input data/chunks/nuforc-full-chunks.jsonl --reset --batch-size 128
@@ -22,16 +22,27 @@ See CLAUDE.md for commands and reuse notes. See plan.md (and the rendered HTML i
 
 All synthesis output is traceable, evaluated for fabrication against raw retrieved chunks, and cost-metered.
 
-## Status
-Plan approved. Full corpus pipeline complete (download + light chunk/enrich + real e5 embeddings + Pinecone seed to dedicated ns). Proto 105 remains in nuforc-v0.1-proto. See CLAUDE.md for commands + EMBEDDINGS_AND_USAGE.md.
+## Status — v0.1 complete (closed out 2026-07)
 
-**Motif Explorer (Primary Feature) rebuilt using Claude Design assets** (from /Downloads/alien-db handoff):
+Full corpus pipeline complete: ~147,891 unique NUFORC reports (deduped from ~591k raw HF rows) → 21,179 chunks → real e5-large-v2 embeddings in Pinecone ns `nuforc-full`. Proto 105 in `nuforc-v0.1-proto`. Live at https://alien-db-chi.vercel.app.
+
+**Remediation pass (2026-07)** — analysis → fixes across integrity, deploy, robustness, all shipped, tested, and (for the integrity fixes) runtime-verified against live Pinecone:
+- **Glass-box integrity:** floor-free claim-level fabrication eval; synthesis no longer emits hardcoded archetype prose (derived + `[STATIC]`-tagged disclaimer); case-robust shape filter (fixed a ~90% silent under-return on live data); all six boolean flags + `shape_lc` threaded into chunk metadata.
+- **Deploy:** fixed the live HTTP 500 (Vercel was auto-installing torch/CUDA); static-only config.
+- **Robustness:** Pinecone retry/backoff, resumable seed (`--resume`), real per-model cost metering, empty-query guard, shared Pydantic stage-boundary schema, enrich `--max-cost` ceiling.
+- **Frontend a11y:** reduced-motion, dialog/focus-trap, fail-soft on data load.
+- Tests: `.venv/bin/python scripts/test_{tier1_integrity,tier3_robustness,schema}.py` (48 checks, no keys needed).
+
+**A hybrid-UI redesign (dense "SENTRY-style" explorer + Report Drawer) was scoped and deliberately dropped** — v0.1 keeps the existing Gradio research UI + the illustrative retro-arcade Motif Explorer. Consequences of that decision left as accepted limitations: the arcade runs on synthetic/illustrative data (labeled as such), per-report `url` stays the `https://nuforc.org/` placeholder, and the new `shape_lc`/flag metadata is live-verified but not backfilled into `nuforc-full` (a full re-seed is only worth doing when a feature consumes those fields).
+
+<details><summary>Motif Explorer build history (Claude Design assets)</summary>
 - Pixel-perfect to the new design: full CRT/arcade (scanlines, flicker, starfield, bezels, Press Start 2P + VT323), custom per-motif 8-bit invaders (bitmaps + bob/march + fire shot FX on click), big ROLL with live scanning animation (invaders + bar + count to 21179), GAME-OVER overlays for common/weird (semantic units + citations + why + "noise or artifact?" vote buttons), toy 2D semantic space plot, 8-bit WebAudio SFX (SND toggle), ticker, etc.
 - 5 commons use our real counts (1247/892/1644/1483/723) + design's beautiful bitmaps + illustrative quotes. ROLL uses the design's rich ~30 rare "weird" clusters (perfect teaching examples).
 - Launch the rebuilt UI: open `artifacts/motif-explorer/index.html` (the folder has index.html + motif-data.js + app.js; works directly in browser). Also synced to Obsidian artifacts.
 - Gradio `ui/app.py` Motif section now promotes/links the polished demo while keeping live retrieval buttons.
 - Real data note: the compute (when finished) will let us wire authentic quotes/IDs; current is the visual+interaction rebuild.
 - Original handoff prompt + design screenshots preserved in `artifacts/motif-explorer/uploads/` and `screenshots/`.
+</details>
 
 ## Pinecone Assistant (managed chat over the data)
 In addition to the custom glass-box RAG in `ui/app.py`, you can build a managed **Pinecone Assistant** on the same NUFORC data:

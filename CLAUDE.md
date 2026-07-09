@@ -2,6 +2,12 @@
 
 Glass-box vector RAG for public UAP/UFO/abduction reports. Follows the exact Agentic SDR methodology from the handbook (fabrication-only eval, JSONL traces, MCP-style tools, cost ceilings, dense prose).
 
+> **Status: v0.1 complete, closed out 2026-07.** Live at https://alien-db-chi.vercel.app. Corpus:
+> ~147,891 unique NUFORC reports → 21,179 chunks in Pinecone ns `nuforc-full`. A 2026-07 remediation
+> pass shipped integrity/deploy/robustness fixes (48 offline tests: `scripts/test_{tier1_integrity,tier3_robustness,schema}.py`);
+> Tier-1 integrity fixes are runtime-verified against live Pinecone. A hybrid-UI redesign was scoped
+> and **deliberately dropped** — see README "Status" for the closeout decisions and accepted limitations.
+
 ## Project
 - Location: ~/alien-db (new independent git repo, sibling to ~/agentic-sdr-demo)
 - v0.1: NUFORC HF only (105 chunks), Gradio explorer UI, **real client embeddings** (intfloat/e5-large-v2 1024d normalized via embedder.py) + Pinecone dense vector index (cosine) with chunk_text in metadata. Hybrid semantic + filters. Exactly reuses mcp-memory patterns + handbook eval.

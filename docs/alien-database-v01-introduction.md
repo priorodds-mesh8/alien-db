@@ -61,7 +61,7 @@ The raw data used in alien-db comes from the publicly available Hugging Face dat
 
 After ingestion, the core dataset lives at:
 
-`data/processed/nuforc-full.jsonl` (295,697 unique reports, ~653 MB)
+`data/processed/nuforc-full.jsonl` (147,891 unique reports (deduped from ~591k raw HF rows))
 
 Each line is a JSON object with these canonical fields:
 
@@ -142,7 +142,7 @@ This produces the units that actually get embedded and stored.
 ## 3. How Much Data Exists
 
 **After deduplication (critical step):**
-- ~295,697 unique sighting reports (from the full HF dump).
+- ~147,891 unique sighting reports (from the full HF dump).
 - ~21,179 chunks after chunking the full corpus (average <1 chunk per report because many sightings are very short).
 
 **In the vector database (Pinecone `alien-db-uap` index, `nuforc-full` namespace):**
